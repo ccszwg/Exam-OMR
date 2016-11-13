@@ -47,6 +47,6 @@ def replace_string(old_text, new_text, filename):
 
 
 def activate_replacement():
-    replace_string("{{QUESTIONS}}", generate_questions(), "template.docx")
+    replace_string("{{QUESTIONS}}", generate_questions(), "test/resources/template.docx")
 
 activate_replacement()

@@ -1,18 +1,22 @@
 import cv2
 
 def binarise_image(image, threshold=200, maxValue = 255):
-    """
-    :param image: actual image data, not location of image - use cv2.imread()
-    :param threshold: adjust for appropriate binarization - between 200 and 210 works well
-    :param maxValue: leave at 255
-    :return: binarized image
-    """
 
     # converts image to grey
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Binarised
-    th, dst = cv2.threshold(gray_image, threshold, maxValue, cv2.THRESH_BINARY);
+    # Binarised, returns tuple but only the binary is used
+    th, binary = cv2.threshold(gray_image, threshold, maxValue, cv2.THRESH_BINARY);
 
-    return dst
+    return binary
 
+
+def edge_detect(image, lower=75, upper=200):
+    # converts image to black and white
+    binary = binarise_image(image)
+
+    # canny edge detect algorithm
+    blurred = cv2.GaussianBlur(binary, (5, 5), 0)
+    edges = cv2.Canny(blurred, lower, upper)
+
+    return edges
