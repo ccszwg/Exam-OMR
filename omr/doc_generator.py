@@ -20,13 +20,17 @@ def generate_questions():
     alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     text = ""
 
+
     for i in range(1, num_questions+1):
         text += "Question %s: \n" % (str(i))
 
         for j in alphabet[0:num_options]:
             text += "%s [   ]   " % j
 
-        text += "\n\n"
+        if i == 10:
+            text += "\n\n\n"
+        else:
+            text += "\n\n"
 
     return text
 
@@ -42,7 +46,7 @@ def replace_string(old_text, new_text, filename):
                     text = inline[i].text.replace(old_text, new_text)
                     inline[i].text = text
 
-    doc.save('dest2.docx')
+    doc.save('marking script.docx')
     return 1
 
 

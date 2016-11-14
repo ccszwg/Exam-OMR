@@ -1,5 +1,13 @@
+import warnings
+
 import cv2
+import numpy as np
 from imutils import perspective
+
+warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
+
+correct_answers = {0: 2, 1: 4, 2: 4, 3: 1, 4: 2, 5: 3, 6: 3, 7: 0, 8: 0, 9: 3, 10: 1, 11: 2, 12: 1, 13: 2, 14: 4, 15: 1,
+                   16: 1, 17: 0, 18: 2, 19: 4}
 
 
 def binarise_image(image, threshold=200, maxValue=255):
@@ -46,4 +54,61 @@ def find_border(image):
     return transformed
 
 
-cv2.imwrite("test1.png", find_border(cv2.imread("test/resources/Scan_20161114_172000.jpg")))
+def retrieve_answers(image):
+    answers = {}
+
+    # todo: PRIORITY refactor this
+
+    binary = binarise_image(image)
+
+    height_full, width_full = binary.shape
+
+    # crops image to half
+    for half in range(0, 2):
+
+        cropped = binary[height_full * 0.02:height_full,
+                  (width_full * 0.05) + ((width_full // 2 + width_full * 0.06) * half):(width_full // 2) + (
+                                                                                                               width_full // 2) * half]
+
+        # cv2.imshow("test", cropped)
+        # cv2.waitKey(0)
+
+        for q in range(0, 10):
+            # todo: fix visible deprecation warnings
+
+            # crops image suitably mutliple times to find each distint answer
+            question_shape = (height_full // 1.28) * 0.095
+
+            question = cropped[question_shape * q:question_shape * (q + 1), width_full * 0.01:width_full // 2]
+
+            height_question, width_question = question.shape
+
+            answer_shape = width_question // 6.1
+
+            inputs = {}
+
+            for a in range(0, 5):
+                answer = question[height_question // 2:height_question, answer_shape * a:answer_shape * (a + 1)]
+
+                # saves all pixel sum vales in dictionary - lowest value equals answer that has been inputted
+                inputs[a] = cv2.sumElems(answer)[0]
+
+                # cv2.imshow("test", answer)
+                # cv2.waitKey(0)
+
+            answers[int(half * 10 + q)] = min(inputs, key=inputs.get)
+
+    return answers
+
+
+def mark_answers(correct_answers, answers):
+    mark = 0
+
+    for key, value in answers.items():
+        if correct_answers[key] == value:
+            mark += 1
+
+    return mark
+
+
+print(mark_answers(correct_answers, retrieve_answers(cv2.imread("cropped.png"))))
