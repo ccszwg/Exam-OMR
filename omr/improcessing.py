@@ -46,4 +46,4 @@ def find_border(image):
     return transformed
 
 
-find_border(cv2.imread("test/Scan_20161113_221737.jpg"))
+cv2.imwrite("test1.png", find_border(cv2.imread("test/resources/Scan_20161114_172000.jpg")))
