@@ -1,5 +1,6 @@
 from docx import *
 
+
 def generate_questions():
     while True:
         try:
@@ -22,10 +23,10 @@ def generate_questions():
 
 
     for i in range(1, num_questions+1):
-        text += "Question %s: \n" % (str(i))
+        text += "Question %s: \n   " % (str(i))
 
         for j in alphabet[0:num_options]:
-            text += "%s [   ]   " % j
+            text += "%s   ◯      " % j
 
         if i == 10:
             text += "\n\n\n"
@@ -51,6 +52,6 @@ def replace_string(old_text, new_text, filename):
 
 
 def activate_replacement():
-    replace_string("{{QUESTIONS}}", generate_questions(), "test/resources/template.docx")
+    replace_string("{{QUESTIONS}}", generate_questions(), "resources/template.docx")
 
 activate_replacement()

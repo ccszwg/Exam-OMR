@@ -15,7 +15,7 @@ def binarise_image(image, threshold=200, maxValue=255):
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # Binarised, returns tuple but only the binary is used
-    th, binary = cv2.threshold(gray_image, threshold, maxValue, cv2.THRESH_BINARY)
+    th, binary = cv2.threshold(gray_image, threshold, maxValue, cv2.THRESH_BINARY_INV)
 
     return binary
 
@@ -35,10 +35,10 @@ def find_border(image):
     edges = edge_detect(image)
 
     # finds contours using edges
-    _, contours, heirachy = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    _, cnts, heirachy = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-    # finds largest rectangle out of list of contours
-    for c in sorted(contours, key=cv2.contourArea, reverse=True):
+    # finds largest rectangle out of list of cnts
+    for c in sorted(cnts, key=cv2.contourArea, reverse=True):
         peri = cv2.arcLength(c, True)
         approx = cv2.approxPolyDP(c, 0.02 * peri, True)
 
@@ -59,46 +59,44 @@ def retrieve_answers(image):
 
     # todo: PRIORITY refactor this
 
+    image = find_border(image)
+
     binary = binarise_image(image)
 
+    # splits image in half
     height_full, width_full = binary.shape
+    half_one = binary[float(height_full * 0.02):float(height_full * 0.98), 0:width_full // 2]
+    cv2.imwrite("test2.jpeg", half_one)
 
-    # crops image to half
-    for half in range(0, 2):
+    half_two = binary[float(height_full * 0.02):float(height_full * 0.98), width_full // 2:float(width_full)]
+    # halves = [half_one, half_two]
+    halves = [half_one]
 
-        cropped = binary[height_full * 0.02:height_full,
-                  (width_full * 0.05) + ((width_full // 2 + width_full * 0.06) * half):(width_full // 2) + (
-                                                                                                               width_full // 2) * half]
+    for half in halves:
 
-        # cv2.imshow("test", cropped)
-        # cv2.waitKey(0)
+        _, cnts, heirachy = cv2.findContours(half, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        answer_cnts = []
 
-        for q in range(0, 10):
-            # todo: fix visible deprecation warnings
+        # loop over the contours
+        for c in cnts:
+            # compute the bounding box of the contour, then use the
+            # bounding box to derive the aspect ratio
+            (x, y, w, h) = cv2.boundingRect(c)
+            ar = w / float(h)
 
-            # crops image suitably mutliple times to find each distint answer
-            question_shape = (height_full // 1.28) * 0.095
+            # in order to label the contour as a question, region
+            # should be sufficiently wide, sufficiently tall, and
+            # have an aspect ratio approximately equal to 1
+            if w >= 5 and h >= 5 and 0.9 <= ar <= 1.1:
+                print(c)
+            answer_cnts.append(c)
 
-            question = cropped[question_shape * q:question_shape * (q + 1), width_full * 0.01:width_full // 2]
+        cv2.drawContours(half, answer_cnts, -1, (0, 255, 0), 3)
+        cv2.imwrite("test.jpeg", half)
 
-            height_question, width_question = question.shape
-
-            answer_shape = width_question // 6.1
-
-            inputs = {}
-
-            for a in range(0, 5):
-                answer = question[height_question // 2:height_question, answer_shape * a:answer_shape * (a + 1)]
-
-                # saves all pixel sum vales in dictionary - lowest value equals answer that has been inputted
-                inputs[a] = cv2.sumElems(answer)[0]
-
-                # cv2.imshow("test", answer)
-                # cv2.waitKey(0)
-
-            answers[int(half * 10 + q)] = min(inputs, key=inputs.get)
-
-    return answers
+        # todo: currently finds marks, need to order marks from top-to-bottom,
+        # todo: work out what question they correspond to
+        # todo: return script's answers
 
 
 def mark_answers(correct_answers, answers):
@@ -111,4 +109,5 @@ def mark_answers(correct_answers, answers):
     return mark
 
 
-print(mark_answers(correct_answers, retrieve_answers(cv2.imread("cropped.png"))))
+im = cv2.imread("resources/Scan_20161115_203418.jpg")
+retrieve_answers(im)
