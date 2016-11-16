@@ -84,7 +84,9 @@ def retrieve_answers(image):
         answer_locations = [[150, 200], [290, 350], [430, 490], [570, 630], [710, 770]]
 
         for y in question_locations:
-            # todo: have the program detect when questions are over - ie. blank space
+            # todo: add support for tests with less than 20 questions
+            # todo: add support for tests with less than 5 options
+
             # stores pixel value - highest pixel value is the bubble with markings
             pixels = []
 
