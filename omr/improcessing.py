@@ -10,19 +10,20 @@ correct_answers = {0: 2, 1: 4, 2: 4, 3: 1, 4: 2, 5: 3, 6: 3, 7: 0, 8: 0, 9: 3, 1
                    16: 1, 17: 0, 18: 2, 19: 4}
 
 
-def binarise_image(image, threshold=200, maxValue=255):
+def binarise_image(image, threshold=200, maxValue=255, type=1):
     # converts image to grey
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    if type == 1:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # Binarised, returns tuple but only the binary is used
-    th, binary = cv2.threshold(gray_image, threshold, maxValue, cv2.THRESH_BINARY_INV)
+    th, binary = cv2.threshold(image, threshold, maxValue, cv2.THRESH_BINARY_INV)
 
     return binary
 
 
 def edge_detect(image, lower=75, upper=200):
     # converts image to black and white
-    binary = binarise_image(image)
+    binary = binarise_image(image, type=2)
 
     # canny edge detect algorithm
     blurred = cv2.GaussianBlur(binary, (5, 5), 0)
@@ -55,48 +56,48 @@ def find_border(image):
 
 
 def retrieve_answers(image):
+
     answers = {}
 
-    # todo: PRIORITY refactor this
-
     image = find_border(image)
-
     binary = binarise_image(image)
 
-    # splits image in half
+    # splits image in half to make it easier to iterate through the questions
     height_full, width_full = binary.shape
     half_one = binary[float(height_full * 0.02):float(height_full * 0.98), 0:width_full // 2]
-    cv2.imwrite("test2.jpeg", half_one)
-
     half_two = binary[float(height_full * 0.02):float(height_full * 0.98), width_full // 2:float(width_full)]
-    # halves = [half_one, half_two]
-    halves = [half_one]
 
-    for half in halves:
+    cv2.imwrite("1.jpg", half_one[0:, :-80])
+    cv2.imwrite("2.jpg", half_two[0:, 80:])
 
-        _, cnts, heirachy = cv2.findContours(half, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-        answer_cnts = []
+    # allows for the same index numbers to be used for 0-9 and then 10-19 - see use below
+    half_num = 0
 
-        # loop over the contours
-        for c in cnts:
-            # compute the bounding box of the contour, then use the
-            # bounding box to derive the aspect ratio
-            (x, y, w, h) = cv2.boundingRect(c)
-            ar = w / float(h)
+    for half in [half_one, half_two[0:, 80:]]:
 
-            # in order to label the contour as a question, region
-            # should be sufficiently wide, sufficiently tall, and
-            # have an aspect ratio approximately equal to 1
-            if w >= 5 and h >= 5 and 0.9 <= ar <= 1.1:
-                print(c)
-            answer_cnts.append(c)
+        # y coordinate range of the answer sections to each of the questions - note that the third item is the position
+        # eg. 0 is the 1st position, 1 is the 2nd etc
+        question_locations = [[100, 160, 0], [300, 360, 1], [500, 560, 2], [700, 760, 3], [900, 960, 4],
+                              [1080, 1140, 5], [1280, 1340, 6], [1460, 1520, 7], [1660, 1720, 8], [1860, 1920, 9]]
 
-        cv2.drawContours(half, answer_cnts, -1, (0, 255, 0), 3)
-        cv2.imwrite("test.jpeg", half)
+        # x location of the A, B, C, D, E bubbles
+        answer_locations = [[150, 200], [290, 350], [430, 490], [570, 630], [710, 770]]
 
-        # todo: currently finds marks, need to order marks from top-to-bottom,
-        # todo: work out what question they correspond to
-        # todo: return script's answers
+        for y in question_locations:
+            # todo: have the program detect when questions are over - ie. blank space
+            # stores pixel value - highest pixel value is the bubble with markings
+            pixels = []
+
+            for x in answer_locations:
+                pixels.append(cv2.sumElems(half[y[0]:y[1], x[0]:x[1]])[0])
+
+            answers[y[2] + half_num * 10] = pixels.index(max(pixels))
+
+        half_num += 1
+
+    print(answers)  # testing
+
+    return answers
 
 
 def mark_answers(correct_answers, answers):
@@ -109,5 +110,5 @@ def mark_answers(correct_answers, answers):
     return mark
 
 
-im = cv2.imread("resources/Scan_20161115_203418.jpg")
+im = cv2.imread("resources/Scan_20161116_190509.jpg")
 retrieve_answers(im)
