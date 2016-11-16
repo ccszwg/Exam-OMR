@@ -10,19 +10,20 @@ correct_answers = {0: 2, 1: 4, 2: 4, 3: 1, 4: 2, 5: 3, 6: 3, 7: 0, 8: 0, 9: 3, 1
                    16: 1, 17: 0, 18: 2, 19: 4}
 
 
-def binarise_image(image, threshold=200, maxValue=255):
+def binarise_image(image, threshold=200, maxValue=255, type=1):
     # converts image to grey
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    if type == 1:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # Binarised, returns tuple but only the binary is used
-    th, binary = cv2.threshold(gray_image, threshold, maxValue, cv2.THRESH_BINARY)
+    th, binary = cv2.threshold(image, threshold, maxValue, cv2.THRESH_BINARY_INV)
 
     return binary
 
 
 def edge_detect(image, lower=75, upper=200):
     # converts image to black and white
-    binary = binarise_image(image)
+    binary = binarise_image(image, type=2)
 
     # canny edge detect algorithm
     blurred = cv2.GaussianBlur(binary, (5, 5), 0)
@@ -35,10 +36,10 @@ def find_border(image):
     edges = edge_detect(image)
 
     # finds contours using edges
-    _, contours, heirachy = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    _, cnts, heirachy = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-    # finds largest rectangle out of list of contours
-    for c in sorted(contours, key=cv2.contourArea, reverse=True):
+    # finds largest rectangle out of list of cnts
+    for c in sorted(cnts, key=cv2.contourArea, reverse=True):
         peri = cv2.arcLength(c, True)
         approx = cv2.approxPolyDP(c, 0.02 * peri, True)
 
@@ -55,48 +56,48 @@ def find_border(image):
 
 
 def retrieve_answers(image):
+
     answers = {}
 
-    # todo: PRIORITY refactor this
-
+    image = find_border(image)
     binary = binarise_image(image)
 
+    # splits image in half to make it easier to iterate through the questions
     height_full, width_full = binary.shape
+    half_one = binary[float(height_full * 0.02):float(height_full * 0.98), 0:width_full // 2]
+    half_two = binary[float(height_full * 0.02):float(height_full * 0.98), width_full // 2:float(width_full)]
 
-    # crops image to half
-    for half in range(0, 2):
+    cv2.imwrite("1.jpg", half_one[0:, :-80])
+    cv2.imwrite("2.jpg", half_two[0:, 80:])
 
-        cropped = binary[height_full * 0.02:height_full,
-                  (width_full * 0.05) + ((width_full // 2 + width_full * 0.06) * half):(width_full // 2) + (
-                                                                                                               width_full // 2) * half]
+    # allows for the same index numbers to be used for 0-9 and then 10-19 - see use below
+    half_num = 0
 
-        # cv2.imshow("test", cropped)
-        # cv2.waitKey(0)
+    for half in [half_one, half_two[0:, 80:]]:
 
-        for q in range(0, 10):
-            # todo: fix visible deprecation warnings
+        # y coordinate range of the answer sections to each of the questions - note that the third item is the position
+        # eg. 0 is the 1st position, 1 is the 2nd etc
+        question_locations = [[100, 160, 0], [300, 360, 1], [500, 560, 2], [700, 760, 3], [900, 960, 4],
+                              [1080, 1140, 5], [1280, 1340, 6], [1460, 1520, 7], [1660, 1720, 8], [1860, 1920, 9]]
 
-            # crops image suitably mutliple times to find each distint answer
-            question_shape = (height_full // 1.28) * 0.095
+        # x location of the A, B, C, D, E bubbles
+        answer_locations = [[150, 200], [290, 350], [430, 490], [570, 630], [710, 770]]
 
-            question = cropped[question_shape * q:question_shape * (q + 1), width_full * 0.01:width_full // 2]
+        for y in question_locations:
+            # todo: add support for tests with less than 20 questions
+            # todo: add support for tests with less than 5 options
 
-            height_question, width_question = question.shape
+            # stores pixel value - highest pixel value is the bubble with markings
+            pixels = []
 
-            answer_shape = width_question // 6.1
+            for x in answer_locations:
+                pixels.append(cv2.sumElems(half[y[0]:y[1], x[0]:x[1]])[0])
 
-            inputs = {}
+            answers[y[2] + half_num * 10] = pixels.index(max(pixels))
 
-            for a in range(0, 5):
-                answer = question[height_question // 2:height_question, answer_shape * a:answer_shape * (a + 1)]
+        half_num += 1
 
-                # saves all pixel sum vales in dictionary - lowest value equals answer that has been inputted
-                inputs[a] = cv2.sumElems(answer)[0]
-
-                # cv2.imshow("test", answer)
-                # cv2.waitKey(0)
-
-            answers[int(half * 10 + q)] = min(inputs, key=inputs.get)
+    print(answers)  # testing
 
     return answers
 
@@ -111,4 +112,5 @@ def mark_answers(correct_answers, answers):
     return mark
 
 
-print(mark_answers(correct_answers, retrieve_answers(cv2.imread("cropped.png"))))
+im = cv2.imread("resources/Scan_20161116_190509.jpg")
+retrieve_answers(im)
