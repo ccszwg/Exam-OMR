@@ -1,4 +1,4 @@
-from docx import *
+import docx
 
 
 def generate_questions():
@@ -36,22 +36,21 @@ def generate_questions():
     return text
 
 
-def replace_string(old_text, new_text, filename):
-    doc = Document(filename)
-    for p in doc.paragraphs:
-        if old_text in p.text:
-            inline = p.runs
-            # Loop added to work with runs (strings with same style)
-            for i in range(len(inline)):
-                if old_text in inline[i].text:
-                    text = inline[i].text.replace(old_text, new_text)
-                    inline[i].text = text
+def replace_string(doc, holder, newtext):
 
-    doc.save('marking script.docx')
-    return 1
+    for paragraph in doc.paragraphs:
+        if holder in paragraph.text:
+            paragraph.text = newtext
 
+    return doc
 
-def activate_replacement():
-    replace_string("{{QUESTIONS}}", generate_questions(), "resources/template.docx")
+def activate_replacement(template):
 
-activate_replacement()
+    doc = docx.Document(template)
+
+    replace_string(doc, "{{IDENTITY}}", "name")
+    replace_string(doc, "{{QUESTIONS}}", generate_questions())
+
+    doc.save("test.docx")
+
+activate_replacement("resources/template.docx")
