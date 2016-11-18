@@ -11,9 +11,14 @@ class MainWindow(QMainWindow):
         # Set up the user interface from Designer.
         uic.loadUi("resources/UI/main.ui", self)
 
-        # make local changes
-        self.logo = QPixmap("resources/OMR-logo.png")
+        # add main logo to image
+        self.logo = QPixmap("resources/UI/OMR-logo.png")
         self.main_logo.setPixmap(self.logo)
+        self.main_logo.setScaledContents(True)
+
+        # icon = QtGui.QIcon()
+        # icon.addPixmap(QtGui.QPixmap("add.png"))
+        # button.setIcon(icon)
 
         # Connect up the buttons
         self.button_classes.clicked.connect(self.open_classes)
@@ -22,14 +27,17 @@ class MainWindow(QMainWindow):
 
         self.show()
 
+
+
     def open_classes(self):
-        print('classes')
+        print("classes")
 
     def open_marking(self):
         print('mark')
 
     def open_docgenerator(self):
         print("docs")
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
