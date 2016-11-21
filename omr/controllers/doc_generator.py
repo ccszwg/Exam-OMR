@@ -44,6 +44,7 @@ def replace_string(doc, holder, newtext):
 
     return doc
 
+
 def activate_replacement(template):
 
     doc = docx.Document(template)
