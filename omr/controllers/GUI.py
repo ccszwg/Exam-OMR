@@ -1,6 +1,8 @@
 from PyQt5 import uic, QtCore, QtGui
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QMainWindow
+from PyQt5.QtWidgets import QMainWindow, QDialog
+
+from . import db_management
 
 
 # todo: MOVE THIS FILE BACK TO ../interface
@@ -53,22 +55,43 @@ class ClassWindow(QMainWindow):
 
         # Set up the user interface from Designer.
         uic.loadUi("interface/UI/classes.ui", self)
+        self.text_add_widget.setHidden(True)
 
-        # db_management.Table("Classes")
+        # initialise tables
+        self.Classes = db_management.Table("Classes")
+        self.Students = db_management.Table("Students")
 
         # connect buttons
         self.button_createclass.clicked.connect(self.open_createclass)
+        self.button_savetext.clicked.connect(self.save_text)
 
-        self.w = []
+        # initialise variables
+        self.add_mode = None
 
     def open_createclass(self):
-        self.w.append(NewClassWindow(self))
-        self.w[-1].show()
+        self.add_mode = "class"
+        self.text_add_widget.setHidden(False)
+        self.text_add.setText("Enter Class Name")
+
+    def toggle_textwidget(self):
+        self.text_add_widget.setHidden(not self.leftWidget.isHidden())
+
+    def save_text(self):
+        if self.add_mode == "class":
+            print("1")
+            if not self.Classes.name_exists(self.text_add.text()):
+                print("2")
+                self.Classes.add(self.text_add.text())
 
 
-class NewClassWindow(QMainWindow):
-    def __init__(self, parent=MainWindow):
+class NewClassWindow(QDialog):
+    def __init__(self, parent=None):
         super().__init__()
 
         # Set up the user interface from Designer.
         uic.loadUi("interface/UI/newclass.ui", self)
+
+        # initialise database access
+        Class = db_management.Table("Classes")
+
+        # connect buttons

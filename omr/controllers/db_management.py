@@ -8,7 +8,7 @@ def scrub(table_name):
         if isinstance(table_name, str):
             return "' %s '" % ''.join(chr for chr in table_name if chr.isalnum() or chr == " ")
         else:
-            return "' " + table_name + " '"
+            return table_name
 
 
 class Table(object):
@@ -31,7 +31,7 @@ class Table(object):
             raise AttributeError("Table parameter is not understood")
 
     def generate_database(self):
-        conn = sqlite3.connect("../data/database.db")
+        conn = sqlite3.connect("data/database.db")
 
         c = conn.cursor()
 
@@ -57,19 +57,33 @@ class Table(object):
 
         conn.close()
 
-    def add(self, data):
-        # if not isinstance(data, tuple):
-        #     raise TypeError("Expected tuple")
+    def name_exists(self, name):
 
-        conn = sqlite3.connect("../data/database.db")
+        conn = sqlite3.connect("data/database.db")
 
         c = conn.cursor()
-        print(data)
-        data = [scrub(i) for i in data.split(", ")]
-        print(data)
+        c.execute("SELECT rowid FROM " + self.table + " WHERE " + self.headers.split(", ")[0] + '="' + name + '"')
+        data = c.fetchall()
 
-        print("INSERT INTO " + self.table + " (" + self.headers + ") " + " VALUES (" + ", ".join(
-            list(map(str, data))) + ")")
+        if len(data) == 0:
+            # no names found
+            return False
+        else:
+            return True
+
+    def add(self, data):
+
+        conn = sqlite3.connect("data/database.db")
+
+        c = conn.cursor()
+
+        data = [scrub(i) for i in data.split(", ")]
+
+        # todo: REFACTOR BELOW
+
+        if len(data) == 1:
+            data = data[0][2:-2]
+            print("INSERT INTO " + self.table + " (" + self.headers + ") " + ' VALUES ("' + data + '")')
 
         c.execute("INSERT INTO " + self.table + " (" + self.headers + ") " + " VALUES (" + ", ".join(
             list(map(str, data))) + ")")
