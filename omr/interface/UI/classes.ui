@@ -17,9 +17,9 @@
    <widget class="QWidget" name="horizontalLayoutWidget">
     <property name="geometry">
      <rect>
-      <x>530</x>
+      <x>570</x>
       <y>520</y>
-      <width>241</width>
+      <width>201</width>
       <height>31</height>
      </rect>
     </property>
@@ -46,7 +46,7 @@
       <x>570</x>
       <y>30</y>
       <width>201</width>
-      <height>21</height>
+      <height>25</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout">
@@ -54,7 +54,7 @@
       <number>6</number>
      </property>
      <item>
-      <widget class="QPushButton" name="pushButton_4">
+      <widget class="QPushButton" name="button_createclass">
        <property name="text">
         <string>Create new class</string>
        </property>
@@ -68,7 +68,7 @@
       <x>20</x>
       <y>30</y>
       <width>531</width>
-      <height>21</height>
+      <height>25</height>
      </rect>
     </property>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -112,7 +112,7 @@
       <x>20</x>
       <y>80</y>
       <width>531</width>
-      <height>411</height>
+      <height>471</height>
      </rect>
     </property>
    </widget>
@@ -132,10 +132,10 @@
    <widget class="QWidget" name="verticalLayoutWidget_2">
     <property name="geometry">
      <rect>
-      <x>560</x>
+      <x>570</x>
       <y>80</y>
       <width>201</width>
-      <height>51</height>
+      <height>54</height>
      </rect>
     </property>
     <layout class="QVBoxLayout" name="verticalLayout_2">

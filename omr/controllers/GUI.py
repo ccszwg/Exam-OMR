@@ -1,8 +1,9 @@
-import sys
-
 from PyQt5 import uic, QtCore, QtGui
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QMainWindow, QApplication
+from PyQt5.QtWidgets import QMainWindow
+
+
+# todo: MOVE THIS FILE BACK TO ../interface
 
 
 class MainWindow(QMainWindow):
@@ -10,10 +11,10 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         # Set up the user interface from Designer.
-        uic.loadUi("UI/main.ui", self)
+        uic.loadUi("interface/UI/main.ui", self)
 
         # add main logo to image
-        self.logo = QPixmap("UI/OMR-logo.png")
+        self.logo = QPixmap("interface/UI/OMR-logo.png")
         self.main_logo.setPixmap(self.logo)
         self.main_logo.setScaledContents(True)
 
@@ -32,12 +33,12 @@ class MainWindow(QMainWindow):
         self.button_mark.clicked.connect(self.open_marking)
         self.button_create.clicked.connect(self.open_docgenerator)
 
-        # Create other windows
-        self.classes = ClassWindow(self)
+        self.w = []
+
 
     def open_classes(self):
-        self.classes.show()
-
+        self.w.append(ClassWindow(self))
+        self.w[-1].show()
 
     def open_marking(self):
         print('mark')
@@ -47,16 +48,27 @@ class MainWindow(QMainWindow):
 
 
 class ClassWindow(QMainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, parent=MainWindow):
         super().__init__()
 
         # Set up the user interface from Designer.
-        uic.loadUi("UI/classes.ui", self)
+        uic.loadUi("interface/UI/classes.ui", self)
+
+        # db_management.Table("Classes")
+
+        # connect buttons
+        self.button_createclass.clicked.connect(self.open_createclass)
+
+        self.w = []
+
+    def open_createclass(self):
+        self.w.append(NewClassWindow(self))
+        self.w[-1].show()
 
 
+class NewClassWindow(QMainWindow):
+    def __init__(self, parent=MainWindow):
+        super().__init__()
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    main = MainWindow()
-    main.show()
-    sys.exit(app.exec_())
+        # Set up the user interface from Designer.
+        uic.loadUi("interface/UI/newclass.ui", self)
