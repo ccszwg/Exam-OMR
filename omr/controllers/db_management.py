@@ -6,7 +6,7 @@ def scrub(table_name):
         return int(table_name)
     except ValueError:
         if isinstance(table_name, str):
-            return "' %s '" % ''.join(chr for chr in table_name if chr.isalnum() or chr == " ")
+            return "'%s'" % ''.join(chr for chr in table_name if chr.isalnum() or chr == " ")
         else:
             return table_name
 
@@ -15,6 +15,7 @@ class Table(object):
     def __init__(self, table):
         self.table = table
         self.headers = self.create_headers()
+        self.primarykey = self.create_primarykeys()
 
         self.generate_database()
 
@@ -27,6 +28,18 @@ class Table(object):
             return "Student_ID, Score, Test_ID"
         elif self.table == "Tests":
             return "Test_Name, Max_score"
+        else:
+            raise AttributeError("Table parameter is not understood")
+
+    def create_primarykeys(self):
+        if self.table == "Classes":
+            return "Class_ID"
+        elif self.table == "Students":
+            return "Student_ID"
+        elif self.table == "Results":
+            return "Results_ID"
+        elif self.table == "Tests":
+            return "Test_ID"
         else:
             raise AttributeError("Table parameter is not understood")
 
@@ -57,13 +70,17 @@ class Table(object):
 
         conn.close()
 
-    def name_exists(self, name):
+    def name_exists(self, name, additional_criteria=""):
 
         conn = sqlite3.connect("data/database.db")
 
         c = conn.cursor()
-        c.execute("SELECT rowid FROM " + self.table + " WHERE " + self.headers.split(", ")[0] + '="' + name + '"')
+        c.execute("SELECT rowid FROM " + self.table + " WHERE " + self.headers.split(", ")[0] + '="' + name + '"' +
+                  additional_criteria)
         data = c.fetchall()
+
+        conn.commit()
+        conn.close()
 
         if len(data) == 0:
             # no names found
@@ -77,16 +94,39 @@ class Table(object):
 
         c = conn.cursor()
 
-        data = [scrub(i) for i in data.split(", ")]
+        data = [scrub(i) for i in data]
 
         # todo: REFACTOR BELOW
 
         if len(data) == 1:
-            data = data[0][2:-2]
-            print("INSERT INTO " + self.table + " (" + self.headers + ") " + ' VALUES ("' + data + '")')
-
-        c.execute("INSERT INTO " + self.table + " (" + self.headers + ") " + " VALUES (" + ", ".join(
-            list(map(str, data))) + ")")
+            c.execute("INSERT INTO " + self.table + " (" + self.headers + ") " + ' VALUES (' + data[0] + ')')
+        else:
+            c.execute("INSERT INTO " + self.table + " (" + self.headers + ") " + " VALUES (" + ", ".join(
+                list(map(str, data))) + ")")
 
         conn.commit()
         conn.close()
+
+    def get_names(self, criteria=""):
+        conn = sqlite3.connect("data/database.db")
+
+        c = conn.cursor()
+        c.execute("SELECT " + self.headers.split(", ")[0] + " FROM " + self.table + criteria)
+        data = c.fetchall()
+
+        conn.commit()
+        conn.close()
+
+        return data
+
+    def get_ID(self, criteria=""):
+        conn = sqlite3.connect("data/database.db")
+
+        c = conn.cursor()
+        c.execute("SELECT " + self.primarykey + " FROM " + self.table + criteria)
+        data = c.fetchall()
+
+        conn.commit()
+        conn.close()
+
+        return data

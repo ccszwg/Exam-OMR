@@ -1,6 +1,6 @@
 from PyQt5 import uic, QtCore, QtGui
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QMainWindow, QDialog
+from PyQt5.QtWidgets import QMainWindow, QTableWidgetItem
 
 from . import db_management
 
@@ -37,7 +37,6 @@ class MainWindow(QMainWindow):
 
         self.w = []
 
-
     def open_classes(self):
         self.w.append(ClassWindow(self))
         self.w[-1].show()
@@ -61,9 +60,15 @@ class ClassWindow(QMainWindow):
         self.Classes = db_management.Table("Classes")
         self.Students = db_management.Table("Students")
 
+        # build additional parts of interface
+        self.create_combobox()
+        self.comboBox_classes.setCurrentIndex(-1)
+
         # connect buttons
         self.button_createclass.clicked.connect(self.open_createclass)
         self.button_savetext.clicked.connect(self.save_text)
+        self.button_loadclass.clicked.connect(self.initialise_table)
+        self.button_addstudent.clicked.connect(self.open_addstudent)
 
         # initialise variables
         self.add_mode = None
@@ -73,25 +78,58 @@ class ClassWindow(QMainWindow):
         self.text_add_widget.setHidden(False)
         self.text_add.setText("Enter Class Name")
 
+    def open_addstudent(self):
+        self.add_mode = "student"
+        self.text_add_widget.setHidden(False)
+        self.text_add.setText("Enter student name")
+
     def toggle_textwidget(self):
-        self.text_add_widget.setHidden(not self.leftWidget.isHidden())
+        self.text_add_widget.setHidden(not self.text_add_widget.isHidden())
 
     def save_text(self):
+        # todo: add user error message for if name already exists
+
         if self.add_mode == "class":
-            print("1")
             if not self.Classes.name_exists(self.text_add.text()):
-                print("2")
-                self.Classes.add(self.text_add.text())
+                self.Classes.add([self.text_add.text()])
+                self.create_combobox(selected="last")
+            self.toggle_textwidget()
 
+        elif self.add_mode == "student":
+            class_ID = str(self.Classes.get_ID(' WHERE Class_Name="' +
+                                               str(self.comboBox_classes.currentText()) + '"')[0][0])
+            if not self.Students.name_exists(self.text_add.text(), " AND class_ID=" + class_ID):
+                student_name = self.text_add.text()
 
-class NewClassWindow(QDialog):
-    def __init__(self, parent=None):
-        super().__init__()
+                self.Students.add([student_name, class_ID])
 
-        # Set up the user interface from Designer.
-        uic.loadUi("interface/UI/newclass.ui", self)
+                self.open_addstudent()
+                self.initialise_table()
 
-        # initialise database access
-        Class = db_management.Table("Classes")
+    def create_combobox(self, selected=None):
 
-        # connect buttons
+        names = self.Classes.get_names()
+
+        self.comboBox_classes.clear()
+
+        for i in names:
+            self.comboBox_classes.addItem(i[0])
+
+        if selected == "last":
+            self.comboBox_classes.setCurrentIndex(len(names) - 1)
+            self.initialise_table()
+
+    def initialise_table(self):
+
+        self.table_students.setRowCount(0)
+
+        class_name = str(self.comboBox_classes.currentText())
+
+        class_ID = self.Classes.get_ID(' WHERE Class_Name="' + class_name + '"')
+
+        names = self.Students.get_names(' WHERE Class_ID="' + str(class_ID[0][0]) + '"')
+
+        for i in names:
+            rowPosition = self.table_students.rowCount()
+            self.table_students.insertRow(rowPosition)
+            self.table_students.setItem(rowPosition, 0, QTableWidgetItem(str(i[0])))
