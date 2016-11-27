@@ -52,6 +52,8 @@ def find_border(image):
     # crops and rotates image to match the border rectangle found above
     transformed = perspective.four_point_transform(image, border.reshape(4, 2))
 
+    cv2.imwrite("border.jpg", transformed)
+
     return transformed
 
 
