@@ -1,6 +1,6 @@
 from PyQt5 import uic, QtCore, QtGui
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QMainWindow, QTableWidgetItem
+from PyQt5.QtWidgets import QMainWindow, QTableWidgetItem, QDialog
 
 from . import db_management
 
@@ -52,6 +52,8 @@ class ClassWindow(QMainWindow):
     def __init__(self, parent=MainWindow):
         super().__init__()
 
+        self.w = []
+
         # Set up the user interface from Designer.
         uic.loadUi("interface/UI/classes.ui", self)
         self.text_add_widget.setHidden(True)
@@ -67,8 +69,12 @@ class ClassWindow(QMainWindow):
         # connect buttons
         self.button_createclass.clicked.connect(self.open_createclass)
         self.button_savetext.clicked.connect(self.save_text)
-        self.button_loadclass.clicked.connect(self.initialise_table)
         self.button_addstudent.clicked.connect(self.open_addstudent)
+        self.button_deleteclass.clicked.connect(self.delete_class)
+        self.table_students.cellClicked.connect(self.cell_clicked)
+        self.button_deletestudent.clicked.connect(self.delete_student)
+        self.comboBox_classes.currentIndexChanged.connect(self.initialise_table)
+        self.button_close.clicked.connect(self.close)
 
         # initialise variables
         self.add_mode = None
@@ -83,6 +89,18 @@ class ClassWindow(QMainWindow):
         self.text_add_widget.setHidden(False)
         self.text_add.setText("Enter student name")
 
+    def delete_class(self):
+        self.w.append(Confirm("Confirm", "Are you sure you want to delete this class?"))
+        self.w[-1].show()
+
+        if self.w[-1].exec_():
+            class_name = str(self.comboBox_classes.currentText())
+            class_ID = self.Classes.get_ID(' WHERE Class_Name="' + class_name + '"')
+
+            self.Classes.delete(' WHERE Class_ID=' + str(class_ID[0][0]))
+
+            self.comboBox_classes.removeItem(self.comboBox_classes.findText(class_name))
+
     def toggle_textwidget(self):
         self.text_add_widget.setHidden(not self.text_add_widget.isHidden())
 
@@ -92,7 +110,10 @@ class ClassWindow(QMainWindow):
         if self.add_mode == "class":
             if not self.Classes.name_exists(self.text_add.text()):
                 self.Classes.add([self.text_add.text()])
-                self.create_combobox(selected="last")
+                self.comboBox_classes.addItem(self.text_add.text())
+                self.comboBox_classes.setCurrentIndex(self.comboBox_classes.count() - 1)
+                self.initialise_table()
+
             self.toggle_textwidget()
 
         elif self.add_mode == "student":
@@ -106,7 +127,7 @@ class ClassWindow(QMainWindow):
                 self.open_addstudent()
                 self.initialise_table()
 
-    def create_combobox(self, selected=None):
+    def create_combobox(self, selected=""):
 
         names = self.Classes.get_names()
 
@@ -115,11 +136,25 @@ class ClassWindow(QMainWindow):
         for i in names:
             self.comboBox_classes.addItem(i[0])
 
-        if selected == "last":
-            self.comboBox_classes.setCurrentIndex(len(names) - 1)
-            self.initialise_table()
+    def cell_clicked(self, row, column):
+        self.button_deletestudent.setEnabled(True)
+
+    def delete_student(self):
+        class_name = str(self.comboBox_classes.currentText())
+        class_ID = self.Classes.get_ID(' WHERE Class_Name="' + class_name + '"')
+
+        name = self.table_students.currentItem().text()
+        print(' WHERE Student_Name="' + name + '" AND Class_ID=' + str(class_ID[0][0]))
+        self.Students.delete(' WHERE Student_Name="' + name + '" AND Class_ID=' + str(class_ID[0][0]))
+
+        print("success")
+
+        self.initialise_table()
 
     def initialise_table(self):
+
+        self.button_addstudent.setEnabled(True)
+        self.button_deleteclass.setEnabled(True)
 
         self.table_students.setRowCount(0)
 
@@ -133,3 +168,21 @@ class ClassWindow(QMainWindow):
             rowPosition = self.table_students.rowCount()
             self.table_students.insertRow(rowPosition)
             self.table_students.setItem(rowPosition, 0, QTableWidgetItem(str(i[0])))
+
+
+class Confirm(QDialog):
+    def __init__(self, title, text, parent=None):
+        super().__init__()
+
+        self.title = title
+        self.text = text
+
+        # Set up the user interface from Designer.
+        uic.loadUi("interface/UI/confirm_dialog.ui", self)
+        self.text_title.setText(self.title)
+        self.text_warning.setText(self.text)
+
+        # add main logo to image
+        self.logo = QPixmap("interface/UI/question-icon.png")
+        self.icon.setPixmap(self.logo)
+        self.icon.setScaledContents(True)

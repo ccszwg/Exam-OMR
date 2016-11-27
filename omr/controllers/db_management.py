@@ -130,3 +130,12 @@ class Table(object):
         conn.close()
 
         return data
+
+    def delete(self, criteria=""):
+        conn = sqlite3.connect("data/database.db")
+
+        c = conn.cursor()
+        c.execute("DELETE FROM " + self.table + " " + criteria)
+
+        conn.commit()
+        conn.close()
