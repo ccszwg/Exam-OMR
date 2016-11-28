@@ -2,7 +2,9 @@ import os
 
 import comtypes.client
 import docx
+import qrcode
 from PyPDF2 import PdfFileMerger, PdfFileReader
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
 
 def scrub(table_name):
@@ -43,38 +45,35 @@ def replace_string(doc, holder, newtext):
     return doc
 
 
-def replace_barcode(doc, barcode):
-    for table in doc.tables:
-        for row in table.rows:
-            for cell in row.cells:
-                for paragraph in cell.paragraphs:
-                    if "{{BARCODE}}" in paragraph.text:
-                        paragraph.text = barcode
+def activate_replacement(template, name, ID, num_questions, num_options, filelocation):
+    try:
+        doc = docx.Document(template)
 
+        replace_string(doc, "{{IDENTITY}}", name)
+        replace_string(doc, "{{QUESTIONS}}", generate_questions(num_questions, num_options))
 
-def generate_barcode(ID):
-    binary_ID = bin(ID)[2:].zfill(16)
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=3,
+            border=0,
+        )
 
-    barcode = ""
+        qr.add_data(str(ID))
+        qr.make(fit=True)
+        im = qr.make_image()
 
-    for i in binary_ID:
-        if i == "1":
-            barcode += " █ "
-        else:
-            barcode += "   "
+        im.save(filelocation + "/QRCODE_" + name + ".png")
 
-    return barcode
+        p = doc.add_paragraph()
+        p.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
+        r = p.add_run()
+        r.add_picture(filelocation + "/QRCODE_" + name + ".png")
 
+        return doc
 
-def activate_replacement(template, name, ID, num_questions, num_options):
-
-    doc = docx.Document(template)
-
-    replace_string(doc, "{{IDENTITY}}", name)
-    replace_string(doc, "{{QUESTIONS}}", generate_questions(num_questions, num_options))
-    replace_barcode(doc, generate_barcode(ID))
-
-    return doc
+    except Exception as e:
+        print(e)
 
 
 def covx_to_pdf(file_location):
@@ -114,9 +113,9 @@ def generate(names, num_questions, num_options, filelocation):
 
     for i in names:
         doc = activate_replacement("resources/template.docx", scrub(i["Name"]), int(i["ID"]), num_questions,
-                                   num_options)
+                                   num_options, filelocation)
 
         doc.save(filelocation + "/" + scrub(i["Name"]) + ".docx")
 
-    covx_to_pdf(filelocation)
-    merge_pdfs(filelocation)
+        # covx_to_pdf(filelocation)
+        # merge_pdfs(filelocation)
