@@ -32,9 +32,37 @@ def edge_detect(image, lower=75, upper=200):
     return edges
 
 
-def find_border(image):
-    cv2.imshow("qr", image)
+def find_qr(image):
+    edges = edge_detect(image)
+
+    # finds contours using edges
+    _, cnts, heirachy = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+    corner = 0
+
+    corner_cnts = np.zeros(shape=(3, 2, 4))
+
+    for c in sorted(cnts, key=cv2.contourArea, reverse=True):
+        peri = cv2.arcLength(c, True)
+        approx = cv2.approxPolyDP(c, .1 * peri, False)
+
+        if len(approx) == 4:
+            corner_cnts[corner] = np.swapaxes(approx.reshape(4, 2), 0, 1)
+            corner += 1
+
+        if corner == 3:
+            break
+
+    x = np.swapaxes(corner_cnts, 0, 1)[0].reshape(12)
+    y = np.swapaxes(corner_cnts, 0, 1)[1].reshape(12)
+
+    cv2.imshow("qr", image[y.min():y.max(), x.min():x.max()])
     cv2.waitKey(0)
+
+
+
+
+def find_border(image):
 
     edges = edge_detect(image)
 
@@ -48,20 +76,11 @@ def find_border(image):
 
         if len(approx) == 4:
             border = approx
+            cnts = np.delete(cnts, c)
             break
-
-        for c in sorted(cnts, key=cv2.contourArea, reverse=True)[1:]:
-            peri = cv2.arcLength(c, True)
-            approx = cv2.approxPolyDP(c, 0.02 * peri, True)
-
-            if len(approx) == 4:
-                cv2.imshow("qr", approx)
-                cv2.waitKey(0)
 
     # crops and rotates image to match the border rectangle found above
     transformed = perspective.four_point_transform(image, border.reshape(4, 2))
-
-    cv2.imwrite("border.jpg", transformed)
 
     return transformed
 
@@ -123,4 +142,5 @@ def mark_answers(correct_answers, answers):
     return mark
 
 
-find_border(cv2.imread('C:\\Users\\Theo\\Documents\\ScansScan_20161128_114205.jpg'))
+im = cv2.imread("../resources/Scans/2.jpg")
+find_qr(im)
