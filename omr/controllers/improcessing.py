@@ -33,6 +33,9 @@ def edge_detect(image, lower=75, upper=200):
 
 
 def find_border(image):
+    cv2.imshow("qr", image)
+    cv2.waitKey(0)
+
     edges = edge_detect(image)
 
     # finds contours using edges
@@ -47,7 +50,13 @@ def find_border(image):
             border = approx
             break
 
-    # cv2.drawContours(image, [border], -1, (0, 255, 0), 2)
+        for c in sorted(cnts, key=cv2.contourArea, reverse=True)[1:]:
+            peri = cv2.arcLength(c, True)
+            approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+
+            if len(approx) == 4:
+                cv2.imshow("qr", approx)
+                cv2.waitKey(0)
 
     # crops and rotates image to match the border rectangle found above
     transformed = perspective.four_point_transform(image, border.reshape(4, 2))
@@ -114,5 +123,4 @@ def mark_answers(correct_answers, answers):
     return mark
 
 
-im = cv2.imread("resources/Scan_20161116_190509.jpg")
-retrieve_answers(im)
+find_border(cv2.imread('C:\\Users\\Theo\\Documents\\ScansScan_20161128_114205.jpg'))
