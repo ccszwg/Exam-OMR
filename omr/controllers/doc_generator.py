@@ -117,5 +117,5 @@ def generate(names, num_questions, num_options, filelocation):
 
         doc.save(filelocation + "/" + scrub(i["Name"]) + ".docx")
 
-        # covx_to_pdf(filelocation)
-        # merge_pdfs(filelocation)
+    covx_to_pdf(filelocation)
+    merge_pdfs(filelocation)
