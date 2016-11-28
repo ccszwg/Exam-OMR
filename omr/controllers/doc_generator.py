@@ -5,6 +5,16 @@ import docx
 from PyPDF2 import PdfFileMerger, PdfFileReader
 
 
+def scrub(table_name):
+    try:
+        return int(table_name)
+    except ValueError:
+        if isinstance(table_name, str):
+            return ''.join(chr for chr in table_name if chr.isalnum())
+        else:
+            return table_name
+
+
 def generate_questions(num_questions, num_options):
 
     alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -67,14 +77,22 @@ def activate_replacement(template, name, ID, num_questions, num_options):
     return doc
 
 
-def covx_to_pdf(infile, outfile):
-    """Convert a Word .docx to PDF"""
+def covx_to_pdf(file_location):
+    try:
+        word = comtypes.client.CreateObject('Word.Application')
 
-    word = comtypes.client.CreateObject('Word.Application')
-    doc = word.Documents.Open(infile)
-    doc.SaveAs(outfile, FileFormat=17)
-    doc.Close()
-    word.Quit()
+        for filename in os.listdir(file_location):
+            if filename.endswith(".docx"):
+                outfile = file_location + "/" + os.path.splitext(filename)[0] + ".pdf"
+                infile = file_location + "/" + filename
+                doc = word.Documents.Open(infile)
+                doc.SaveAs(outfile, FileFormat=17)
+                doc.Close()
+
+    except Exception as e:
+        print(e)
+    finally:
+        word.Quit()
 
 
 def merge_pdfs(file_location):
@@ -93,10 +111,12 @@ def merge_pdfs(file_location):
 
 
 def generate(names, num_questions, num_options, filelocation):
+
     for i in names:
-        doc = (activate_replacement("resources/template.docx", i["Name"], int(i["ID"]), num_questions, num_options))
+        doc = activate_replacement("resources/template.docx", scrub(i["Name"]), int(i["ID"]), num_questions,
+                                   num_options)
 
-        doc.save(filelocation + "/" + i["Name"] + ".docx")
-        covx_to_pdf(filelocation + "/" + i["Name"] + ".docx", filelocation + "/" + i["Name"] + ".pdf")
+        doc.save(filelocation + "/" + scrub(i["Name"]) + ".docx")
 
+    covx_to_pdf(filelocation)
     merge_pdfs(filelocation)

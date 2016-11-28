@@ -51,6 +51,7 @@ class MainWindow(QMainWindow):
 
 
 class ClassWindow(QMainWindow):
+    # todo: let user press enter instead of button in textboxes
     def __init__(self, parent=MainWindow):
         super().__init__()
 
@@ -146,10 +147,7 @@ class ClassWindow(QMainWindow):
         class_ID = self.Classes.get_ID(' WHERE Class_Name="' + class_name + '"')
 
         name = self.table_students.currentItem().text()
-        print(' WHERE Student_Name="' + name + '" AND Class_ID=' + str(class_ID[0][0]))
         self.Students.delete(' WHERE Student_Name="' + name + '" AND Class_ID=' + str(class_ID[0][0]))
-
-        print("success")
 
         self.initialise_table()
 
@@ -229,6 +227,7 @@ class AnswerSheet_Generator(QMainWindow):
     def save_dialog(self):
         # todo: change this to save one file
         self.fileloc = QFileDialog.getExistingDirectory(self, 'Select folder to save to')
+        self.label_savelocation.setText(self.fileloc)
 
         self.check_options_valid()
 
@@ -237,13 +236,13 @@ class AnswerSheet_Generator(QMainWindow):
             self.button_generate.setEnabled(True)
 
     def generate_questions(self):
+
         class_ID = str(self.Classes.get_ID(' WHERE Class_Name="' + str(self.comboBox_classes.currentText())
                                            + '"')[0][0])
 
         names = [i[0] for i in self.Students.get_names(' WHERE Class_ID=' + class_ID)]
 
         student_info = []
-        print(names)
 
         for i in names:
             ID = str(self.Students.get_ID(' WHERE Class_ID=' + class_ID + ' AND Student_Name="' + i + '"')[0][0])
@@ -252,3 +251,5 @@ class AnswerSheet_Generator(QMainWindow):
 
         doc_generator.generate(student_info, self.slider_questions.value(),
                                self.slider_numoptions.value(), self.fileloc)
+
+        # todo: create loading bar
