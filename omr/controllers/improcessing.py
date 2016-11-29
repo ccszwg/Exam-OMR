@@ -56,10 +56,13 @@ def find_qr(image):
     x = np.swapaxes(corner_cnts, 0, 1)[0].reshape(12)
     y = np.swapaxes(corner_cnts, 0, 1)[1].reshape(12)
 
-    cv2.imshow("qr", image[y.min():y.max(), x.min():x.max()])
+    np_qr = image[y.min():y.max(), x.min():x.max()]
+
+    np_qr = binarise_image(np_qr, type=1)
+    np_qr = (255 - np_qr)
+
+    cv2.imshow("qr", np_qr)
     cv2.waitKey(0)
-
-
 
 
 def find_border(image):
@@ -142,5 +145,5 @@ def mark_answers(correct_answers, answers):
     return mark
 
 
-im = cv2.imread("../resources/Scans/2.jpg")
+im = cv2.imread("../resources/Scans/1.jpg")
 find_qr(im)
