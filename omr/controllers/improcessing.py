@@ -2,6 +2,8 @@ import warnings
 
 import cv2
 import numpy as np
+import qreader
+from PIL import Image
 from imutils import perspective
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
@@ -39,7 +41,6 @@ def find_qr(image):
     _, cnts, heirachy = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
     corner = 0
-
     corner_cnts = np.zeros(shape=(3, 2, 4))
 
     for c in sorted(cnts, key=cv2.contourArea, reverse=True):
@@ -61,8 +62,13 @@ def find_qr(image):
     np_qr = binarise_image(np_qr, type=1)
     np_qr = (255 - np_qr)
 
-    cv2.imshow("qr", np_qr)
-    cv2.waitKey(0)
+    downsize = cv2.resize(np_qr, (21, 21))
+
+    pil_qr = Image.fromarray(downsize)
+
+    data = qreader.read(pil_qr)
+
+    print(data)  # prints "Version 2"
 
 
 def find_border(image):
@@ -145,5 +151,5 @@ def mark_answers(correct_answers, answers):
     return mark
 
 
-im = cv2.imread("../resources/Scans/1.jpg")
+im = cv2.imread("../resources/Scans/2.jpg")
 find_qr(im)
