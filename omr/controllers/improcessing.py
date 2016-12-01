@@ -35,40 +35,73 @@ def edge_detect(image, lower=75, upper=200):
 
 
 def find_qr(image):
-    edges = edge_detect(image)
+    # todo: FIX QR CODE DETECTION PROBLEMS - only adds one corner to the array
+    # todo: error detection in message
+    # todo: rotate depending on orientation
 
-    # finds contours using edges
-    _, cnts, heirachy = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    img = image
+
+    edges = edge_detect(img)
+
+    _, contours, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    hierarchy = hierarchy[0]  # get the actual inner list of hierarchy descriptions
 
     corner = 0
-    corner_cnts = np.zeros(shape=(3, 2, 4))
+    corner_cnts = np.empty((1, 2), int)
+    print(corner_cnts)
 
-    for c in sorted(cnts, key=cv2.contourArea, reverse=True):
-        peri = cv2.arcLength(c, True)
-        approx = cv2.approxPolyDP(c, .1 * peri, False)
+    indices = sorted(range(len(contours)), key=lambda i: cv2.contourArea(contours[i]))
 
-        if len(approx) == 4:
-            corner_cnts[corner] = np.swapaxes(approx.reshape(4, 2), 0, 1)
-            corner += 1
+    print(indices)
+
+    # For each contour, find the bounding rectangle and draw it
+    for i in reversed(indices):
+        currentContour = contours[i]
+        currentHierarchy = hierarchy[i]
+        x, y, w, h = cv2.boundingRect(currentContour)
+
+        if currentHierarchy[3] < 0:
+            if 0.85 < (w / h) < 1.1:
+                new = np.vstack((corner_cnts, currentContour.reshape(-1, 2)))
+                # these are the outermost parent components
+
+                cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 3)
+                corner += 1
 
         if corner == 3:
             break
 
-    x = np.swapaxes(corner_cnts, 0, 1)[0].reshape(12)
-    y = np.swapaxes(corner_cnts, 0, 1)[1].reshape(12)
+    print(np.delete(np.hsplit(new, 2)[0].flatten(), (0), axis=0))
 
+    # Finally show the image
+    cv2.imshow('img', cv2.resize(img, (0, 0), fx=0.2, fy=0.2))
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    # reshapes np array and cuts image to QR code
+    x = np.delete(np.hsplit(new, 2)[0].flatten(), (0), axis=0)
+    y = np.delete(np.hsplit(new, 2)[1].flatten(), (0), axis=0)
     np_qr = image[y.min():y.max(), x.min():x.max()]
 
+    cv2.imshow("qr", np_qr)
+    cv2.waitKey(0)
+
     np_qr = binarise_image(np_qr, type=1)
-    np_qr = (255 - np_qr)
+    np_qr = (255 - np_qr)  # inverts
 
-    downsize = cv2.resize(np_qr, (21, 21))
+    cv2.imshow("qr", np_qr)
+    cv2.waitKey(0)
 
-    pil_qr = Image.fromarray(downsize)
+    downsize = cv2.resize(np_qr, (21, 21))  # each pixel represents one block on QR code
 
-    data = qreader.read(pil_qr)
+    cv2.imshow("qr", downsize)
+    cv2.waitKey(0)
 
-    print(data)  # prints "Version 2"
+    pil_qr = Image.fromarray(downsize)  # turns into PIL image for use with qreader.read()
+
+    data = qreader.read(pil_qr)  # should return Student_ID
+
+    return data
 
 
 def find_border(image):
@@ -95,6 +128,7 @@ def find_border(image):
 
 
 def retrieve_answers(image):
+    # todo: REWRITE SO FINDS CONTOURS OF THE BUBBLES
 
     answers = {}
 
@@ -106,8 +140,8 @@ def retrieve_answers(image):
     half_one = binary[float(height_full * 0.02):float(height_full * 0.98), 0:width_full // 2]
     half_two = binary[float(height_full * 0.02):float(height_full * 0.98), width_full // 2:float(width_full)]
 
-    cv2.imwrite("1.jpg", half_one[0:, :-80])
-    cv2.imwrite("2.jpg", half_two[0:, 80:])
+    # cv2.imwrite("1.jpg", half_one[0:, :-80])
+    # cv2.imwrite("2.jpg", half_two[0:, 80:])
 
     # allows for the same index numbers to be used for 0-9 and then 10-19 - see use below
     half_num = 0
@@ -151,5 +185,8 @@ def mark_answers(correct_answers, answers):
     return mark
 
 
-im = cv2.imread("../resources/Scans/2.jpg")
-find_qr(im)
+# print(find_qr(cv2.imread("../resources/Scans/4.jpg")))
+
+# print(mark_answers(correct_answers, retrieve_answers(cv2.imread("../resources/Scans/2.jpg"))))
+for i in range(7, 9):
+    print(find_qr(cv2.imread("../resources/Scans/" + str(i) + ".jpg")))
