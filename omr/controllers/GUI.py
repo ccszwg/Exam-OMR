@@ -1,8 +1,9 @@
 from PyQt5 import uic, QtCore, QtGui
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QMainWindow, QTableWidgetItem, QDialog
+from PyQt5.QtWidgets import QMainWindow, QTableWidgetItem, QDialog, QFileDialog
 
 from . import db_management
+from . import doc_generator
 
 
 # todo: MOVE THIS FILE BACK TO ../interface
@@ -45,10 +46,12 @@ class MainWindow(QMainWindow):
         print('mark')
 
     def open_docgenerator(self):
-        print("docs")
+        self.w.append(AnswerSheet_Generator(self))
+        self.w[-1].show()
 
 
 class ClassWindow(QMainWindow):
+    # todo: let user press enter instead of button in textboxes
     def __init__(self, parent=MainWindow):
         super().__init__()
 
@@ -144,10 +147,7 @@ class ClassWindow(QMainWindow):
         class_ID = self.Classes.get_ID(' WHERE Class_Name="' + class_name + '"')
 
         name = self.table_students.currentItem().text()
-        print(' WHERE Student_Name="' + name + '" AND Class_ID=' + str(class_ID[0][0]))
         self.Students.delete(' WHERE Student_Name="' + name + '" AND Class_ID=' + str(class_ID[0][0]))
-
-        print("success")
 
         self.initialise_table()
 
@@ -186,3 +186,70 @@ class Confirm(QDialog):
         self.logo = QPixmap("interface/UI/question-icon.png")
         self.icon.setPixmap(self.logo)
         self.icon.setScaledContents(True)
+
+
+class AnswerSheet_Generator(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__()
+
+        # Set up the user interface from Designer.
+        uic.loadUi("interface/UI/answersheet_generator.ui", self)
+
+        self.Classes = db_management.Table("Classes")
+        self.Students = db_management.Table("Students")
+
+        self.create_combobox()
+        self.comboBox_classes.setCurrentIndex(-1)
+
+        # connect buttons
+        self.slider_questions.valueChanged.connect(self.sliderquestion_values)
+        self.slider_numoptions.valueChanged.connect(self.slideroption_values)
+        self.button_save.clicked.connect(self.save_dialog)
+        self.comboBox_classes.currentIndexChanged.connect(self.check_options_valid)
+        self.button_generate.clicked.connect(self.generate_questions)
+
+        self.fileloc = None
+
+    def sliderquestion_values(self):
+        self.label_numquestions.setText(str(self.slider_questions.value()))
+
+    def slideroption_values(self):
+        self.label_numoptions.setText(str(self.slider_numoptions.value()))
+
+    def create_combobox(self, selected=""):
+        names = self.Classes.get_names()
+
+        self.comboBox_classes.clear()
+
+        for i in names:
+            self.comboBox_classes.addItem(i[0])
+
+    def save_dialog(self):
+        # todo: change this to save one file
+        self.fileloc = QFileDialog.getExistingDirectory(self, 'Select folder to save to')
+        self.label_savelocation.setText(self.fileloc)
+
+        self.check_options_valid()
+
+    def check_options_valid(self):
+        if self.fileloc is not None and self.comboBox_classes.currentText() is not "":
+            self.button_generate.setEnabled(True)
+
+    def generate_questions(self):
+
+        class_ID = str(self.Classes.get_ID(' WHERE Class_Name="' + str(self.comboBox_classes.currentText())
+                                           + '"')[0][0])
+
+        names = [i[0] for i in self.Students.get_names(' WHERE Class_ID=' + class_ID)]
+
+        student_info = []
+
+        for i in names:
+            ID = str(self.Students.get_ID(' WHERE Class_ID=' + class_ID + ' AND Student_Name="' + i + '"')[0][0])
+
+            student_info.append({"Name": i, "ID": ID})
+
+        doc_generator.generate(student_info, self.slider_questions.value(),
+                               self.slider_numoptions.value(), self.fileloc)
+
+        # todo: create loading bar

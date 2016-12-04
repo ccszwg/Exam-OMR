@@ -96,8 +96,6 @@ class Table(object):
 
         data = [scrub(i) for i in data]
 
-        # todo: REFACTOR BELOW
-
         if len(data) == 1:
             c.execute("INSERT INTO " + self.table + " (" + self.headers + ") " + ' VALUES (' + data[0] + ')')
         else:

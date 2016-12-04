@@ -1,26 +1,26 @@
+import os
+
+import comtypes.client
 import docx
+import qrcode
+from PyPDF2 import PdfFileMerger, PdfFileReader
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
 
-def generate_questions():
-    while True:
-        try:
-            num_questions = int(input("How many question are there? "))
-        except:
-            print("Please type a number")
-            continue
-        break
+def scrub(table_name):
+    try:
+        return int(table_name)
+    except ValueError:
+        if isinstance(table_name, str):
+            return ''.join(chr for chr in table_name if chr.isalnum())
+        else:
+            return table_name
 
-    while True:
-        try:
-            num_options = int(input("How many options per questions are there? "))
-        except:
-            print("Please type a number")
-            continue
-        break
+
+def generate_questions(num_questions, num_options):
 
     alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     text = ""
-
 
     for i in range(1, num_questions+1):
         text += "Question %s: \n   " % (str(i))
@@ -45,13 +45,78 @@ def replace_string(doc, holder, newtext):
     return doc
 
 
-def activate_replacement(template):
+def activate_replacement(template, name, ID, num_questions, num_options, filelocation):
+    try:
+        doc = docx.Document(template)
 
-    doc = docx.Document(template)
+        replace_string(doc, "{{IDENTITY}}", name)
+        replace_string(doc, "{{QUESTIONS}}", generate_questions(num_questions, num_options))
 
-    replace_string(doc, "{{IDENTITY}}", "name")
-    replace_string(doc, "{{QUESTIONS}}", generate_questions())
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=3,
+            border=0,
+        )
 
-    doc.save("test.docx")
+        # todo: have QR code include more information (ie. class and test ID)
+        qr.add_data((str(ID) + " ") * 3)
+        qr.make(fit=True)
+        im = qr.make_image()
 
-activate_replacement("resources/template.docx")
+        im.save(filelocation + "/QRCODE_" + name + ".png")
+
+        p = doc.add_paragraph()
+        p.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT
+        r = p.add_run()
+        r.add_picture(filelocation + "/QRCODE_" + name + ".png")
+
+        return doc
+
+    except Exception as e:
+        print(e)
+
+
+def covx_to_pdf(file_location):
+    try:
+        word = comtypes.client.CreateObject('Word.Application')
+
+        for filename in os.listdir(file_location):
+            if filename.endswith(".docx"):
+                outfile = file_location + "/" + os.path.splitext(filename)[0] + ".pdf"
+                infile = file_location + "/" + filename
+                doc = word.Documents.Open(infile)
+                doc.SaveAs(outfile, FileFormat=17)
+                doc.Close()
+
+    except Exception as e:
+        print(e)
+    finally:
+        word.Quit()
+
+
+def merge_pdfs(file_location):
+    merger = PdfFileMerger()
+
+    for filename in os.listdir(file_location):
+        if filename.endswith(".pdf") and filename != "exam papers.pdf":
+            with open(file_location + "/" + filename, "rb") as f:
+                merger.append(PdfFileReader(f))
+
+    merger.write(file_location + "/exam papers.pdf")
+
+    for filename in os.listdir(file_location):
+        if not filename == "exam papers.pdf":
+            os.remove(file_location + "/" + filename)
+
+
+def generate(names, num_questions, num_options, filelocation):
+
+    for i in names:
+        doc = activate_replacement("resources/template.docx", scrub(i["Name"]), int(i["ID"]), num_questions,
+                                   num_options, filelocation)
+
+        doc.save(filelocation + "/" + scrub(i["Name"]) + ".docx")
+
+    covx_to_pdf(filelocation)
+    merge_pdfs(filelocation)
