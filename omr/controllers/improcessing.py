@@ -192,8 +192,5 @@ def mark_answers(correct_answers, answers):
     return mark
 
 
-retrieve_answers(cv2.imread("../resources/Scans/Lorem_black_Page_1.png"))
-
-
 for i in range(1, 8):
     retrieve_answers(cv2.imread("../resources/Scans/" + str(i) + ".jpg"))

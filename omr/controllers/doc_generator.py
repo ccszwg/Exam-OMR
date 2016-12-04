@@ -59,6 +59,7 @@ def activate_replacement(template, name, ID, num_questions, num_options, fileloc
             border=0,
         )
 
+        # todo: have QR code include more information (ie. class and test ID)
         qr.add_data((str(ID) + " ") * 3)
         qr.make(fit=True)
         im = qr.make_image()
