@@ -1,5 +1,5 @@
-import statistics
 import warnings
+from collections import Counter
 
 import cv2
 import numpy as np
@@ -131,39 +131,56 @@ def retrieve_answers(image):
     # todo: optimise
 
     answers = {}
-
     image = find_border(image)
-    binary = binarise_image(image, threshold=180)
-    cv2.imwrite("1.jpeg", binary)
+    binary = binarise_image(image, threshold=200)
 
-    _, contours, hierarchy = cv2.findContours(binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
+    _, contours, hierarchy = cv2.findContours(binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     hierarchy = hierarchy[0]  # get the actual inner list of hierarchy descriptions
 
     # list of potential contours
+    bubbles = []
     areas = []
+    xpositions = []
+    ypositions = []
 
-    # For each contour, find the bounding rectangle and draw it
+    # For each contour, see if it is approximately square
     for component in zip(contours, hierarchy):
         current_contour = component[0]
         current_hierarchy = component[1]
         x, y, w, h = cv2.boundingRect(current_contour)
         if current_hierarchy[2] < 0:
-            approx = cv2.approxPolyDP(current_contour, 0.005 * cv2.arcLength(current_contour, True), True)
 
             if 0.9 < w / h < 1.1:
+                bubbles.append(current_contour)
                 areas.append(w * h)
 
-    mode = statistics.mode(areas)
+    mode = [i[0] for i in Counter(areas).most_common()][0]  # find modal area which is probably the bubbles
 
-    #
-    for c in contours:
+    # find start of each question
+    for c in bubbles:
         x, y, w, h = cv2.boundingRect(c)
-        if mode - mode * 0.05 < w * h < mode + mode * 0.05:
-            cv2.rectangle(image, (x, y), (x + w, y + h), (0, 0, 255), 3)
 
-    cv2.imshow("1", cv2.resize(image, (0, 0), fx=0.3, fy=0.3))
-    cv2.waitKey(0)
+        if mode - mode * 0.1 < w * h < mode + mode * 0.1:
+            xpositions.append(round(x, -1))
+            ypositions.append(round(y, -1))
+
+    xpos = sorted([i[0] for i in Counter(xpositions).most_common()][0:10])
+    ypos = [i[0] for i in Counter(ypositions).most_common()][0:10]
+
+    binary = binarise_image(image)
+
+    for y in ypos:
+        xcount = 0
+        for x in xpos:
+            # todo: automatically calculate threshold for sum of pixels                      VVVVVV
+            if cv2.sumElems(binary[y:y + binary.shape[0] * 0.03, x:x + binary.shape[1] * 0.03])[0] > 190000:
+                question = (x // (image.shape[1] // 2)) * 10 + y // (image.shape[0] * 0.09)
+                answers[question] = xcount % 5
+
+            xcount += 1
+
+    return answers
+
 
 def mark_answers(correct_answers, answers):
     mark = 0
@@ -175,5 +192,8 @@ def mark_answers(correct_answers, answers):
     return mark
 
 
+retrieve_answers(cv2.imread("../resources/Scans/Lorem_black_Page_1.png"))
+
+
 for i in range(1, 8):
-    print(retrieve_answers(cv2.imread("../resources/Scans/" + str(i) + ".jpg")))
+    retrieve_answers(cv2.imread("../resources/Scans/" + str(i) + ".jpg"))
