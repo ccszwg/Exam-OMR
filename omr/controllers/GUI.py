@@ -288,7 +288,7 @@ class MarkWindow(QMainWindow):
 
                 if filepath.endswith(".png") or filepath.endswith(".jpg") or filepath.endswith(".jpeg"):
                     try:
-                        qr_info = str(improcessing.find_qr(filepath)
+                        qr_info = str(improcessing.find_qr(filepath))
                         qr_info = qr_info.split(" ")
 
                         if qr_info[0] == qr_info[1] == qr_info[2] and qr_info[3] == qr_info[4] == qr_info[5]:
