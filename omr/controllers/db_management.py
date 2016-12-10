@@ -117,6 +117,18 @@ class Table(object):
 
         return data
 
+    def get_data(self, criteria=""):
+        conn = sqlite3.connect("data/database.db")
+
+        c = conn.cursor()
+        c.execute("SELECT " + ", ".join(self.headers.split(", ")[0:2]) + " FROM " + self.table + criteria)
+        data = c.fetchall()
+
+        conn.commit()
+        conn.close()
+
+        return data
+
     def get_ID(self, criteria=""):
         conn = sqlite3.connect("data/database.db")
 

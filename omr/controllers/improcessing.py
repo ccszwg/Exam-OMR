@@ -36,11 +36,11 @@ def edge_detect(image, lower=75, upper=200):
     return edges
 
 
-def find_qr(image):
+def find_qr(imageloc):
     # todo: error detection in message
 
+    image = cv2.imread(imageloc)
     image = rotate(image)
-
     edges = binarise_image(rotate(image))
 
     _, contours, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -127,8 +127,10 @@ def find_border(image):
             return image[y:y + h, x:x + w]
 
 
-def retrieve_answers(image):
+def retrieve_answers(imageloc):
     # todo: optimise
+
+    image = cv2.imread(imageloc)
 
     answers = {}
     image = find_border(image)
@@ -164,6 +166,7 @@ def retrieve_answers(image):
             xpositions.append(round(x, -1))
             ypositions.append(round(y, -1))
 
+    # todo: add support for not answers a question
     xpos = sorted([i[0] for i in Counter(xpositions).most_common()][0:10])
     ypos = [i[0] for i in Counter(ypositions).most_common()][0:10]
 
@@ -172,25 +175,26 @@ def retrieve_answers(image):
     for y in ypos:
         xcount = 0
         for x in xpos:
-            # todo: automatically calculate threshold for sum of pixels                      VVVVVV
-            if cv2.sumElems(binary[y:y + binary.shape[0] * 0.03, x:x + binary.shape[1] * 0.03])[0] > 190000:
-                question = (x // (image.shape[1] // 2)) * 10 + y // (image.shape[0] * 0.09)
-                answers[question] = xcount % 5
+            pixelsum = cv2.sumElems(binary[y:y + binary.shape[0] * 0.03, x:x + binary.shape[1] * 0.03])[0]
+            question = int((x // (image.shape[1] // 2)) * 10 + y // (image.shape[0] * 0.09))
+            if question in answers:
+                if pixelsum > answers[question]["pixelsum"]:
+                    answers[question] = {"option": xcount % 5, "pixelsum": pixelsum}
+            else:
+                answers[question] = {"option": xcount % 5, "pixelsum": pixelsum}
 
             xcount += 1
 
     return answers
 
 
-def mark_answers(correct_answers, answers):
+def mark_answers(correct_answers, imageloc):
     mark = 0
 
+    answers = retrieve_answers(imageloc)
+
     for key, value in answers.items():
-        if correct_answers[key] == value:
+        if correct_answers[key] == value["option"]:
             mark += 1
 
     return mark
-
-
-for i in range(1, 8):
-    retrieve_answers(cv2.imread("../resources/Scans/" + str(i) + ".jpg"))

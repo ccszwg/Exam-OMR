@@ -7,6 +7,9 @@ from PyPDF2 import PdfFileMerger, PdfFileReader
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
 
+# todo: TURN INTO CLASS
+
+
 def scrub(table_name):
     try:
         return int(table_name)
@@ -45,7 +48,7 @@ def replace_string(doc, holder, newtext):
     return doc
 
 
-def activate_replacement(template, name, ID, num_questions, num_options, filelocation):
+def activate_replacement(template, name, ID, num_questions, num_options, filelocation, class_ID, test_ID):
     try:
         doc = docx.Document(template)
 
@@ -59,8 +62,7 @@ def activate_replacement(template, name, ID, num_questions, num_options, fileloc
             border=0,
         )
 
-        # todo: have QR code include more information (ie. class and test ID)
-        qr.add_data((str(ID) + " ") * 3)
+        qr.add_data((str(ID) + " ") * 3 + str(test_ID) * 3 + str(class_ID) * 3)
         qr.make(fit=True)
         im = qr.make_image()
 
@@ -110,11 +112,11 @@ def merge_pdfs(file_location):
             os.remove(file_location + "/" + filename)
 
 
-def generate(names, num_questions, num_options, filelocation):
+def generate(names, num_questions, num_options, filelocation, class_ID, test_ID):
 
     for i in names:
         doc = activate_replacement("resources/template.docx", scrub(i["Name"]), int(i["ID"]), num_questions,
-                                   num_options, filelocation)
+                                   num_options, filelocation, class_ID, test_ID)
 
         doc.save(filelocation + "/" + scrub(i["Name"]) + ".docx")
 
