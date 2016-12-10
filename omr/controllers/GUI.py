@@ -1,6 +1,8 @@
 import os
 import statistics
+from collections import Counter
 
+import pyqtgraph as pg
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QMainWindow, QTableWidgetItem, QDialog, QFileDialog
@@ -8,9 +10,6 @@ from PyQt5.QtWidgets import QMainWindow, QTableWidgetItem, QDialog, QFileDialog
 from . import db_management
 from . import doc_generator
 from . import improcessing
-
-
-# todo: MOVE THIS FILE BACK TO ../interface
 
 
 class MainWindow(QMainWindow):
@@ -117,7 +116,6 @@ class ClassWindow(QMainWindow):
         self.text_add_widget.setHidden(not self.text_add_widget.isHidden())
 
     def save_text(self):
-        # todo: add user error message for if name already exists
 
         if self.add_mode == "class":
             if not self.Classes.name_exists(self.text_add.text()):
@@ -138,6 +136,9 @@ class ClassWindow(QMainWindow):
 
                 self.open_addstudent()
                 self.initialise_table()
+            else:
+                self.w.append(Dialog("error", "Error", "Student name already exists\nPlease use a different name"))
+                self.w[-1].show()
 
     def create_combobox(self, selected=""):
 
@@ -231,6 +232,8 @@ class AnswerSheet_Generator(QMainWindow):
         # create test record
         self.Tests.add([self.textbox_testname.text(), self.slider_questions.value()])
 
+        test_ID = str(self.Tests.get_ID(' WHERE Test_Name="' + str(self.comboBox_classes.currentText())
+                                        + '"')[0][0])
         class_ID = str(self.Classes.get_ID(' WHERE Class_Name="' + str(self.comboBox_classes.currentText())
                                            + '"')[0][0])
         names = [i[0] for i in self.Students.get_names(' WHERE Class_ID=' + class_ID)]
@@ -240,8 +243,11 @@ class AnswerSheet_Generator(QMainWindow):
             ID = str(self.Students.get_ID(' WHERE Class_ID=' + class_ID + ' AND Student_Name="' + i + '"')[0][0])
             student_info.append({"Name": i, "ID": ID})
 
+        # for testing
+        print(class_ID, test_ID)
+
         doc_generator.generate(student_info, self.slider_questions.value(),
-                               self.slider_numoptions.value(), self.fileloc)
+                               self.slider_numoptions.value(), self.fileloc, class_ID, test_ID)
 
         # todo: create loading bar
 
@@ -271,7 +277,7 @@ class MarkWindow(QMainWindow):
         self.progressBar.setHidden(False)
         self.progressBar.setMaximum(len(next(os.walk(self.fileloc))[2]))
 
-        # for testing - todo: allow user to input correct answers
+        # for testing - todo: ALLOW USER TO INPUT CORRECT ANSWERS
         answers = {0: 2, 1: 4, 2: 4, 3: 1, 4: 2, 5: 3, 6: 3, 7: 0, 8: 0, 9: 3, 10: 1, 11: 2, 12: 1, 13: 2, 14: 4, 15: 1,
                    16: 1, 17: 0, 18: 2, 19: 4}
 
@@ -282,7 +288,7 @@ class MarkWindow(QMainWindow):
 
                 if filepath.endswith(".png") or filepath.endswith(".jpg") or filepath.endswith(".jpeg"):
                     try:
-                        qr_info = (str(improcessing.find_qr(filepath)) + " ") * 3 + "1 1 1"
+                        qr_info = str(improcessing.find_qr(filepath)
                         qr_info = qr_info.split(" ")
 
                         if qr_info[0] == qr_info[1] == qr_info[2] and qr_info[3] == qr_info[4] == qr_info[5]:
@@ -328,7 +334,10 @@ class ResultsWindows(QMainWindow):
         self.comboBox_tests.setCurrentIndex(-1)
 
         # connect buttons
-        self.comboBox_tests.currentIndexChanged.connect(self.initialise_results)
+        try:
+            self.comboBox_tests.currentIndexChanged.connect(self.initialise_results)
+        except Exception as e:
+            print(e)
 
         # initialise variables
         self.results = None
@@ -342,13 +351,19 @@ class ResultsWindows(QMainWindow):
             self.comboBox_tests.addItem(i[0])
 
     def initialise_results(self):
-        self.table_results.setRowCount(0)
+
 
         self.test_name = str(self.comboBox_tests.currentText())
         self.test_ID = self.Tests.get_ID(' WHERE Test_Name="' + self.test_name + '"')[0][0]
         self.results = self.Results.get_data(' WHERE Test_ID="' + str(self.test_ID) + '"')
+        self.max_mark = self.Tests.get_data(' WHERE Test_ID="' + str(self.test_ID) + '"')[0][1]
 
         scores = [i[1] for i in self.results]
+
+        try:
+            plotpoints = scores + list(range(0, self.max_mark + 1))
+        except Exception as e:
+            print(e)
 
         self.widget_statistics.setHidden(False)
         self.label_mean.setText(str(round(statistics.mean(scores), 4)))
@@ -356,14 +371,12 @@ class ResultsWindows(QMainWindow):
         self.label_range.setText(str(max(scores) - min(scores)))
         self.label_highestScore.setText(str(max(scores)))
         self.label_lowestScore.setText(str(min(scores)))
+        self.initialise_table()
 
-        try:
-            self.initialise_table()
-        except Exception as e:
-            print(e)
+        self.initialise_chart(sorted(Counter(plotpoints).most_common()))
 
     def initialise_table(self):
-        max_mark = self.Tests.get_data(' WHERE Test_ID="' + str(self.test_ID) + '"')[0][1]
+        self.table_results.setRowCount(0)
         # todo: add multiclass support
         for i in self.results:
             rowPosition = self.table_results.rowCount()
@@ -372,11 +385,20 @@ class ResultsWindows(QMainWindow):
                                        QTableWidgetItem(
                                            self.Students.get_names(' WHERE Student_ID="' + i[0] + '"')[0][0]))
             self.table_results.setItem(rowPosition, 2, QTableWidgetItem(str(i[1])))
-            self.table_results.setItem(rowPosition, 3, QTableWidgetItem(str(round(i[1] / max_mark, 3) * 100) + "%"))
+            self.table_results.setItem(rowPosition, 3, QTableWidgetItem(
+                str(round(i[1] / self.max_mark, 3) * 100) + "%"))
 
-    def initialise_chart(self):
-        # todo: ADD BAR CHART DATA
-        pass
+    def initialise_chart(self, scores):
+
+        pg.setConfigOption("background", "w")
+        pg.setConfigOption("foreground", "k")
+
+        results_graph = pg.PlotWidget()
+        self.chart_results.addWidget(results_graph)
+        results_graph.plot([i[0] for i in scores], [i[1] - 1 for i in scores], pen={'color': "#006eb4"})
+        results_graph.setLabels(left="Frequency", bottom="Scores")
+        results_graph.setXRange(0, self.max_mark, padding=0)
+
 
 
 class Dialog(QDialog):

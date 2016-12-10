@@ -166,7 +166,7 @@ def retrieve_answers(imageloc):
             xpositions.append(round(x, -1))
             ypositions.append(round(y, -1))
 
-    # todo: add support for less than 20 questions and less than 20 answers (probably by merging similar numbers)
+    # todo: add support for not answers a question
     xpos = sorted([i[0] for i in Counter(xpositions).most_common()][0:10])
     ypos = [i[0] for i in Counter(ypositions).most_common()][0:10]
 
