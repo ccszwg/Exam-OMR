@@ -7,6 +7,9 @@ from PyPDF2 import PdfFileMerger, PdfFileReader
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 
 
+# todo: TURN INTO CLASS
+
+
 def scrub(table_name):
     try:
         return int(table_name)

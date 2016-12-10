@@ -1,9 +1,12 @@
-from PyQt5 import uic, QtCore, QtGui
+import os
+
+from PyQt5 import uic, QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QMainWindow, QTableWidgetItem, QDialog, QFileDialog
 
 from . import db_management
 from . import doc_generator
+from . import improcessing
 
 
 # todo: MOVE THIS FILE BACK TO ../interface
@@ -43,7 +46,8 @@ class MainWindow(QMainWindow):
         self.w[-1].show()
 
     def open_marking(self):
-        print('mark')
+        self.w.append(MarkWindow(self))
+        self.w[-1].show()
 
     def open_docgenerator(self):
         self.w.append(AnswerSheet_Generator(self))
@@ -93,7 +97,7 @@ class ClassWindow(QMainWindow):
         self.text_add.setText("Enter student name")
 
     def delete_class(self):
-        self.w.append(Confirm("Confirm", "Are you sure you want to delete this class?"))
+        self.w.append(Dialog("confirm", "Confirm", "Are you sure you want to delete this class?"))
         self.w[-1].show()
 
         if self.w[-1].exec_():
@@ -170,24 +174,6 @@ class ClassWindow(QMainWindow):
             self.table_students.setItem(rowPosition, 0, QTableWidgetItem(str(i[0])))
 
 
-class Confirm(QDialog):
-    def __init__(self, title, text, parent=None):
-        super().__init__()
-
-        self.title = title
-        self.text = text
-
-        # Set up the user interface from Designer.
-        uic.loadUi("interface/UI/confirm_dialog.ui", self)
-        self.text_title.setText(self.title)
-        self.text_warning.setText(self.text)
-
-        # add main logo to image
-        self.logo = QPixmap("interface/UI/question-icon.png")
-        self.icon.setPixmap(self.logo)
-        self.icon.setScaledContents(True)
-
-
 class AnswerSheet_Generator(QMainWindow):
     def __init__(self, parent=None):
         super().__init__()
@@ -197,6 +183,7 @@ class AnswerSheet_Generator(QMainWindow):
 
         self.Classes = db_management.Table("Classes")
         self.Students = db_management.Table("Students")
+        self.Tests = db_management.Table("Tests")
 
         self.create_combobox()
         self.comboBox_classes.setCurrentIndex(-1)
@@ -236,20 +223,117 @@ class AnswerSheet_Generator(QMainWindow):
             self.button_generate.setEnabled(True)
 
     def generate_questions(self):
+        # create test record
+        self.Tests.add([self.textbox_testname.text(), self.slider_questions.value()])
 
         class_ID = str(self.Classes.get_ID(' WHERE Class_Name="' + str(self.comboBox_classes.currentText())
                                            + '"')[0][0])
-
         names = [i[0] for i in self.Students.get_names(' WHERE Class_ID=' + class_ID)]
-
         student_info = []
 
         for i in names:
             ID = str(self.Students.get_ID(' WHERE Class_ID=' + class_ID + ' AND Student_Name="' + i + '"')[0][0])
-
             student_info.append({"Name": i, "ID": ID})
 
         doc_generator.generate(student_info, self.slider_questions.value(),
                                self.slider_numoptions.value(), self.fileloc)
 
         # todo: create loading bar
+
+
+class MarkWindow(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__()
+
+        self.Results = db_management.Table("Results")
+
+        # Set up the user interface from Designer.
+        uic.loadUi("interface/UI/mark.ui", self)
+        self.progressBar.setHidden(True)
+
+        # connect buttons
+        self.button_selectfolder.clicked.connect(self.open_dialog)
+        self.button_markpapers.clicked.connect(self.mark_papers)
+
+        self.w = []
+
+    def open_dialog(self):
+        self.fileloc = QFileDialog.getExistingDirectory(self, 'Select folder containing answer papers')
+        self.label_folderlocation.setText(self.fileloc)
+        self.button_markpapers.setEnabled(True)
+
+    def mark_papers(self):
+        self.progressBar.setHidden(False)
+        self.progressBar.setMaximum(len(next(os.walk(self.fileloc))[2]))
+
+        # for testing - todo: allow user to input correct answers
+        answers = {0: 2, 1: 4, 2: 4, 3: 1, 4: 2, 5: 3, 6: 3, 7: 0, 8: 0, 9: 3, 10: 1, 11: 2, 12: 1, 13: 2, 14: 4, 15: 1,
+                   16: 1, 17: 0, 18: 2, 19: 4}
+
+        for subdir, dirs, files in os.walk(self.fileloc):
+            for file in files:
+
+                filepath = subdir + os.sep + file
+
+                if filepath.endswith(".png") or filepath.endswith(".jpg") or filepath.endswith(".jpeg"):
+                    try:
+                        qr_info = (str(improcessing.find_qr(filepath)) + " ") * 3 + "1 1 1"
+                        qr_info = qr_info.split(" ")
+
+                        if qr_info[0] == qr_info[1] == qr_info[2] and qr_info[3] == qr_info[4] == qr_info[5]:
+                            mark = improcessing.mark_answers(answers, filepath)
+                            self.Results.add([qr_info[0], mark, qr_info[4]])
+                        else:
+                            # todo: handle qr code corruption better
+                            print("qr code corrupted")
+
+                        self.progressBar.setValue(self.progressBar.value() + 1)
+
+                    except Exception as e:
+                        # testing for any unexpected errors
+                        print(e)
+
+                else:
+                    self.error = Dialog("error", "Error marking", "Unsupported file type")
+                    self.error.show()
+                    self.progressBar.setHidden(True)
+                    break
+
+            else:
+                self.w.append(Dialog("notification", "All papers marked",
+                                     "Tests have been marked, \nview them in the test section"))
+                self.w[-1].show()
+
+                if self.w[-1].exec_():
+                    self.close()
+
+
+class Dialog(QDialog):
+    def __init__(self, type, title, text, parent=None):
+        try:
+            super().__init__()
+            uic.loadUi("interface/UI/confirm_dialog.ui", self)
+
+            self.title = title
+            self.text = text
+
+            if type == "error":
+                self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Ok)
+                self.logo = QPixmap("interface/UI/exclamation-icon.png")
+            elif type == "confirm":
+                self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Yes | QtWidgets.QDialogButtonBox.No)
+                self.logo = QPixmap("interface/UI/question-icon.png")
+            elif type == "notification":
+                self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Ok)
+                self.logo = QPixmap("interface/UI/thumbsup-icon.png")
+
+            # Set up the user interface from Designer.
+            self.text_title.setText(self.title)
+            self.text_warning.setText(self.text)
+
+            # add main logo to image
+            self.icon.setPixmap(self.logo)
+            self.icon.setScaledContents(True)
+
+        except Exception as e:
+            print(e)
