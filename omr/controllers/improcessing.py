@@ -40,9 +40,7 @@ def find_qr(imageloc):
     # todo: error detection in message
 
     image = cv2.imread(imageloc)
-
     image = rotate(image)
-
     edges = binarise_image(rotate(image))
 
     _, contours, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)

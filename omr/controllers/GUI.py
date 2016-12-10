@@ -1,4 +1,5 @@
 import os
+import statistics
 
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import QPixmap
@@ -38,6 +39,7 @@ class MainWindow(QMainWindow):
         self.button_classes.clicked.connect(self.open_classes)
         self.button_mark.clicked.connect(self.open_marking)
         self.button_create.clicked.connect(self.open_docgenerator)
+        self.button_results.clicked.connect(self.open_results)
 
         self.w = []
 
@@ -53,6 +55,9 @@ class MainWindow(QMainWindow):
         self.w.append(AnswerSheet_Generator(self))
         self.w[-1].show()
 
+    def open_results(self):
+        self.w.append(ResultsWindows(self))
+        self.w[-1].show()
 
 class ClassWindow(QMainWindow):
     # todo: let user press enter instead of button in textboxes
@@ -308,32 +313,95 @@ class MarkWindow(QMainWindow):
                     self.close()
 
 
-class Dialog(QDialog):
-    def __init__(self, type, title, text, parent=None):
+class ResultsWindows(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__()
+
+        self.Students = db_management.Table("Students")
+        self.Tests = db_management.Table("Tests")
+        self.Results = db_management.Table("Results")
+
+        # Set up the user interface from Designer.
+        uic.loadUi("interface/UI/results.ui", self)
+        self.widget_statistics.setHidden(True)
+        self.create_combobox()
+        self.comboBox_tests.setCurrentIndex(-1)
+
+        # connect buttons
+        self.comboBox_tests.currentIndexChanged.connect(self.initialise_results)
+
+        # initialise variables
+        self.results = None
+
+    def create_combobox(self, selected=""):
+
+        names = self.Tests.get_names()
+        self.comboBox_tests.clear()
+
+        for i in names:
+            self.comboBox_tests.addItem(i[0])
+
+    def initialise_results(self):
+        self.table_results.setRowCount(0)
+
+        self.test_name = str(self.comboBox_tests.currentText())
+        self.test_ID = self.Tests.get_ID(' WHERE Test_Name="' + self.test_name + '"')[0][0]
+        self.results = self.Results.get_data(' WHERE Test_ID="' + str(self.test_ID) + '"')
+
+        scores = [i[1] for i in self.results]
+
+        self.widget_statistics.setHidden(False)
+        self.label_mean.setText(str(round(statistics.mean(scores), 4)))
+        self.label_median.setText(str(statistics.median(scores)))
+        self.label_range.setText(str(max(scores) - min(scores)))
+        self.label_highestScore.setText(str(max(scores)))
+        self.label_lowestScore.setText(str(min(scores)))
+
         try:
-            super().__init__()
-            uic.loadUi("interface/UI/confirm_dialog.ui", self)
-
-            self.title = title
-            self.text = text
-
-            if type == "error":
-                self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Ok)
-                self.logo = QPixmap("interface/UI/exclamation-icon.png")
-            elif type == "confirm":
-                self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Yes | QtWidgets.QDialogButtonBox.No)
-                self.logo = QPixmap("interface/UI/question-icon.png")
-            elif type == "notification":
-                self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Ok)
-                self.logo = QPixmap("interface/UI/thumbsup-icon.png")
-
-            # Set up the user interface from Designer.
-            self.text_title.setText(self.title)
-            self.text_warning.setText(self.text)
-
-            # add main logo to image
-            self.icon.setPixmap(self.logo)
-            self.icon.setScaledContents(True)
-
+            self.initialise_table()
         except Exception as e:
             print(e)
+
+    def initialise_table(self):
+        max_mark = self.Tests.get_data(' WHERE Test_ID="' + str(self.test_ID) + '"')[0][1]
+        # todo: add multiclass support
+        for i in self.results:
+            rowPosition = self.table_results.rowCount()
+            self.table_results.insertRow(rowPosition)
+            self.table_results.setItem(rowPosition, 0,
+                                       QTableWidgetItem(
+                                           self.Students.get_names(' WHERE Student_ID="' + i[0] + '"')[0][0]))
+            self.table_results.setItem(rowPosition, 2, QTableWidgetItem(str(i[1])))
+            self.table_results.setItem(rowPosition, 3, QTableWidgetItem(str(round(i[1] / max_mark, 3) * 100) + "%"))
+
+    def initialise_chart(self):
+        # todo: ADD BAR CHART DATA
+        pass
+
+
+class Dialog(QDialog):
+    def __init__(self, type, title, text, parent=None):
+
+        super().__init__()
+        uic.loadUi("interface/UI/confirm_dialog.ui", self)
+
+        self.title = title
+        self.text = text
+
+        if type == "error":
+            self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Ok)
+            self.logo = QPixmap("interface/UI/exclamation-icon.png")
+        elif type == "confirm":
+            self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Yes | QtWidgets.QDialogButtonBox.No)
+            self.logo = QPixmap("interface/UI/question-icon.png")
+        elif type == "notification":
+            self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Ok)
+            self.logo = QPixmap("interface/UI/thumbsup-icon.png")
+
+        # Set up the user interface from Designer.
+        self.text_title.setText(self.title)
+        self.text_warning.setText(self.text)
+
+        # add main logo to image
+        self.icon.setPixmap(self.logo)
+        self.icon.setScaledContents(True)
