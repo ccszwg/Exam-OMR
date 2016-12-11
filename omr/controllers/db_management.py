@@ -28,6 +28,8 @@ class Table(object):
             return "Student_ID, Score, Test_ID"
         elif self.table == "Tests":
             return "Test_Name, Max_score"
+        elif self.table == "Answers":
+            return "Test_ID, Q0, Q1, Q2, Q3, Q4, Q5, Q6, Q7, Q8, Q9, Q10, Q11, Q12, Q13, Q14, Q15, Q16, Q17, Q18, Q19"
         else:
             raise AttributeError("Table parameter is not understood")
 
@@ -40,6 +42,8 @@ class Table(object):
             return "Results_ID"
         elif self.table == "Tests":
             return "Test_ID"
+        elif self.table == "Answers":
+            return "Answer_ID"
         else:
             raise AttributeError("Table parameter is not understood")
 
@@ -67,6 +71,13 @@ class Table(object):
                   "Test_ID INTEGER PRIMARY KEY, "
                   "Test_Name TEXT, "
                   "Max_score INTEGER)")
+
+        c.execute("create table if not exists Answers ("
+                  "Answers_ID INTEGER PRIMARY KEY, "
+                  "Test_ID INTEGER, "
+                  "Q0 INTEGER, Q1 INTEGER, Q2 INTEGER, Q3 INTEGER, Q4 INTEGER, Q5 INTEGER, Q6 INTEGER, Q7 INTEGER, "
+                  "Q8 INTEGER, Q9 INTEGER, Q10 INTEGER, Q11 INTEGER, Q12 INTEGER, Q13 INTEGER, Q14 INTEGER, "
+                  "Q15 INTEGER, Q16 INTEGER, Q17 INTEGER, Q18 INTEGER, Q19 INTEGER)")
 
         conn.close()
 
@@ -110,6 +121,18 @@ class Table(object):
 
         c = conn.cursor()
         c.execute("SELECT " + self.headers.split(", ")[0] + " FROM " + self.table + criteria)
+        data = c.fetchall()
+
+        conn.commit()
+        conn.close()
+
+        return data
+
+    def get_all_data(self, criteria=""):
+        conn = sqlite3.connect("data/database.db")
+
+        c = conn.cursor()
+        c.execute("SELECT " + ", ".join(self.headers.split(", ")[1:]) + " FROM " + self.table + criteria)
         data = c.fetchall()
 
         conn.commit()

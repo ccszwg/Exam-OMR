@@ -5,7 +5,8 @@ from collections import Counter
 import pyqtgraph as pg
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QMainWindow, QTableWidgetItem, QDialog, QFileDialog
+from PyQt5.QtWidgets import QMainWindow, QTableWidgetItem, QDialog, QFileDialog, QWidget, QVBoxLayout, \
+    QScrollArea, QFormLayout, QLabel, QGroupBox, QComboBox
 
 from . import db_management
 from . import doc_generator
@@ -54,9 +55,12 @@ class MainWindow(QMainWindow):
         self.w.append(AnswerSheet_Generator(self))
         self.w[-1].show()
 
+        # todo: clean up exceptions
+
     def open_results(self):
         self.w.append(ResultsWindows(self))
         self.w[-1].show()
+
 
 class ClassWindow(QMainWindow):
     # todo: let user press enter instead of button in textboxes
@@ -190,9 +194,11 @@ class AnswerSheet_Generator(QMainWindow):
         self.Classes = db_management.Table("Classes")
         self.Students = db_management.Table("Students")
         self.Tests = db_management.Table("Tests")
+        self.Answers = db_management.Table("Answers")
 
         self.create_combobox()
         self.comboBox_classes.setCurrentIndex(-1)
+        self.user_answers = []
 
         # connect buttons
         self.slider_questions.valueChanged.connect(self.sliderquestion_values)
@@ -200,8 +206,27 @@ class AnswerSheet_Generator(QMainWindow):
         self.button_save.clicked.connect(self.save_dialog)
         self.comboBox_classes.currentIndexChanged.connect(self.check_options_valid)
         self.button_generate.clicked.connect(self.generate_questions)
+        self.button_answers.clicked.connect(self.open_answers)
+
+        self.w = []
 
         self.fileloc = None
+
+    def receive_signal(self, arg1):
+        input_answers = {int(key): arg1[key] for key in arg1}
+        answers_ordered = []
+
+        for k in input_answers:
+            answers_ordered.append(input_answers[k])
+
+        self.user_answers = answers_ordered
+        self.check_options_valid()
+
+    def open_answers(self):
+        self.w.append(AnswersWindow(self.slider_questions.value(), self.slider_numoptions.value(),
+                                    self.textbox_testname.text()))
+        self.w[-1].show()
+        self.w[-1].answersEntered.connect(self.receive_signal)
 
     def sliderquestion_values(self):
         self.label_numquestions.setText(str(self.slider_questions.value()))
@@ -225,29 +250,36 @@ class AnswerSheet_Generator(QMainWindow):
         self.check_options_valid()
 
     def check_options_valid(self):
-        if self.fileloc is not None and self.comboBox_classes.currentText() is not "":
+
+        if self.fileloc is not None and self.comboBox_classes.currentText() is not "" and len(self.user_answers) > 0:
             self.button_generate.setEnabled(True)
 
     def generate_questions(self):
-        # create test record
-        self.Tests.add([self.textbox_testname.text(), self.slider_questions.value()])
+        try:
+            # todo: error handling if database is locked
+            # todo: error handling if test already exists
+            # create test record
+            self.Tests.add([self.textbox_testname.text(), self.slider_questions.value()])
 
-        test_ID = str(self.Tests.get_ID(' WHERE Test_Name="' + str(self.comboBox_classes.currentText())
-                                        + '"')[0][0])
-        class_ID = str(self.Classes.get_ID(' WHERE Class_Name="' + str(self.comboBox_classes.currentText())
-                                           + '"')[0][0])
-        names = [i[0] for i in self.Students.get_names(' WHERE Class_ID=' + class_ID)]
-        student_info = []
+            test_ID = str(self.Tests.get_ID(' WHERE Test_Name="' + str(self.textbox_testname.text())
+                                            + '"')[0][0])
+            class_ID = str(self.Classes.get_ID(' WHERE Class_Name="' + str(self.comboBox_classes.currentText())
+                                               + '"')[0][0])
+            names = [i[0] for i in self.Students.get_names(' WHERE Class_ID=' + class_ID)]
+            student_info = []
 
-        for i in names:
-            ID = str(self.Students.get_ID(' WHERE Class_ID=' + class_ID + ' AND Student_Name="' + i + '"')[0][0])
-            student_info.append({"Name": i, "ID": ID})
+            for i in names:
+                ID = str(self.Students.get_ID(' WHERE Class_ID=' + class_ID + ' AND Student_Name="' + i + '"')[0][0])
+                student_info.append({"Name": i, "ID": ID})
 
-        # for testing
-        print(class_ID, test_ID)
+            answers_fields = [int(test_ID)] + self.user_answers
 
-        doc_generator.generate(student_info, self.slider_questions.value(),
-                               self.slider_numoptions.value(), self.fileloc, class_ID, test_ID)
+            self.Answers.add(answers_fields)
+
+            doc_generator.generate(student_info, self.slider_questions.value(),
+                                   self.slider_numoptions.value(), self.fileloc, class_ID, test_ID)
+        except Exception as e:
+            print(e)
 
         # todo: create loading bar
 
@@ -257,6 +289,7 @@ class MarkWindow(QMainWindow):
         super().__init__()
 
         self.Results = db_management.Table("Results")
+        self.Answers = db_management.Table("Answers")
 
         # Set up the user interface from Designer.
         uic.loadUi("interface/UI/mark.ui", self)
@@ -265,6 +298,8 @@ class MarkWindow(QMainWindow):
         # connect buttons
         self.button_selectfolder.clicked.connect(self.open_dialog)
         self.button_markpapers.clicked.connect(self.mark_papers)
+
+        self.get_answers(18)
 
         self.w = []
 
@@ -277,10 +312,6 @@ class MarkWindow(QMainWindow):
         self.progressBar.setHidden(False)
         self.progressBar.setMaximum(len(next(os.walk(self.fileloc))[2]))
 
-        # for testing - todo: ALLOW USER TO INPUT CORRECT ANSWERS
-        answers = {0: 2, 1: 4, 2: 4, 3: 1, 4: 2, 5: 3, 6: 3, 7: 0, 8: 0, 9: 3, 10: 1, 11: 2, 12: 1, 13: 2, 14: 4, 15: 1,
-                   16: 1, 17: 0, 18: 2, 19: 4}
-
         for subdir, dirs, files in os.walk(self.fileloc):
             for file in files:
 
@@ -292,7 +323,7 @@ class MarkWindow(QMainWindow):
                         qr_info = qr_info.split(" ")
 
                         if qr_info[0] == qr_info[1] == qr_info[2] and qr_info[3] == qr_info[4] == qr_info[5]:
-                            mark = improcessing.mark_answers(answers, filepath)
+                            mark = improcessing.mark_answers(self.get_answers(qr_info[3]), filepath)
                             self.Results.add([qr_info[0], mark, qr_info[4]])
                         else:
                             # todo: handle qr code corruption better
@@ -318,6 +349,13 @@ class MarkWindow(QMainWindow):
                 if self.w[-1].exec_():
                     self.close()
 
+    def get_answers(self, test_ID):
+
+        answers = self.Answers.get_all_data(' WHERE Test_ID=' + str(test_ID))[0]
+
+        answers_dict = {i: answers[i] for i in range(0, len(answers))}
+
+        return answers_dict
 
 class ResultsWindows(QMainWindow):
     def __init__(self, parent=None):
@@ -334,10 +372,7 @@ class ResultsWindows(QMainWindow):
         self.comboBox_tests.setCurrentIndex(-1)
 
         # connect buttons
-        try:
-            self.comboBox_tests.currentIndexChanged.connect(self.initialise_results)
-        except Exception as e:
-            print(e)
+        self.comboBox_tests.currentIndexChanged.connect(self.initialise_results)
 
         # initialise variables
         self.results = None
@@ -352,7 +387,6 @@ class ResultsWindows(QMainWindow):
 
     def initialise_results(self):
 
-
         self.test_name = str(self.comboBox_tests.currentText())
         self.test_ID = self.Tests.get_ID(' WHERE Test_Name="' + self.test_name + '"')[0][0]
         self.results = self.Results.get_data(' WHERE Test_ID="' + str(self.test_ID) + '"')
@@ -360,10 +394,7 @@ class ResultsWindows(QMainWindow):
 
         scores = [i[1] for i in self.results]
 
-        try:
-            plotpoints = scores + list(range(0, self.max_mark + 1))
-        except Exception as e:
-            print(e)
+        plotpoints = scores + list(range(0, self.max_mark + 1))
 
         self.widget_statistics.setHidden(False)
         self.label_mean.setText(str(round(statistics.mean(scores), 4)))
@@ -399,6 +430,13 @@ class ResultsWindows(QMainWindow):
         results_graph.setLabels(left="Frequency", bottom="Scores")
         results_graph.setXRange(0, self.max_mark, padding=0)
 
+        ax = results_graph.getAxis('bottom')  # This is the trick
+        dx = [(i, str(i)) for i in list(range(0, self.max_mark))]
+        ax.setTicks([dx, []])
+
+        ay = results_graph.getAxis('left')  # This is the trick
+        dy = [(i, str(i)) for i in list(range(0, max([i[1] for i in scores])))]
+        ay.setTicks([dy, []])
 
 
 class Dialog(QDialog):
@@ -427,3 +465,76 @@ class Dialog(QDialog):
         # add main logo to image
         self.icon.setPixmap(self.logo)
         self.icon.setScaledContents(True)
+
+
+class AnswersWindow(QMainWindow):
+    answersEntered = QtCore.pyqtSignal(dict)
+
+    def __init__(self, num_questions, num_options, testname, parent=None):
+
+        super().__init__()
+        uic.loadUi("interface/UI/answerswindow.ui", self)
+
+        self.testname = testname
+
+        self.form_widget = AnswersWidget(self, num_questions, num_options)
+        self.verticalLayout.addWidget(self.form_widget)
+
+        self.Answers = db_management.Table("Answers")
+        self.Tests = db_management.Table("Tests")
+
+        # connect buttons
+        self.button_save.clicked.connect(self.save)
+
+        self.w = []
+
+    def save(self):
+        options = {}
+
+        for widget in self.form_widget.children():
+            for subwidget in widget.children():
+                for subsubwidget in subwidget.children():
+                    for subsubsubwidget in subsubwidget.children():
+
+                        if isinstance(subsubsubwidget, QLabel):
+                            current_question = subsubsubwidget.text()[9:]
+                            options[current_question] = ""
+                        if isinstance(subsubsubwidget, QComboBox):
+                            options[current_question] = subsubsubwidget.currentText()
+
+                            if subsubsubwidget.currentText() not in list("ABCDE"):
+                                self.w.append(Dialog("error", "Empty options detected",
+                                                     "Please input all questions answers"))
+                                self.w[-1].show()
+                                if self.w[-1].exec_():
+                                    return None
+
+        self.answersEntered.emit(options)
+        self.close()
+
+
+class AnswersWidget(QWidget):
+    def __init__(self, parent, num_questions, num_options):
+        QWidget.__init__(self, parent)
+        uic.loadUi("interface/UI/answers.ui", self)
+
+        mygroupbox = QGroupBox()
+        myform = QFormLayout()
+        labellist = []
+        combolist = []
+        options = list("ABCDE")
+
+        for i in range(num_questions):
+            labellist.append(QLabel("Question " + str(i + 1)))
+            combobox = QComboBox()
+            combobox.addItems(options[:num_options])
+            # combobox.setCurrentIndex(-1)
+            combolist.append(combobox)
+            myform.addRow(labellist[i], combolist[i])
+
+        mygroupbox.setLayout(myform)
+        scroll = QScrollArea()
+        scroll.setWidget(mygroupbox)
+        scroll.setWidgetResizable(True)
+        layout = QVBoxLayout(self)
+        layout.addWidget(scroll)
