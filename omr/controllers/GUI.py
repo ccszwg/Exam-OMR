@@ -48,8 +48,11 @@ class MainWindow(QMainWindow):
         self.w[-1].show()
 
     def open_marking(self):
-        self.w.append(MarkWindow(self))
-        self.w[-1].show()
+        try:
+            self.w.append(MarkWindow(self))
+            self.w[-1].show()
+        except Exception as e:
+            print(e)
 
     def open_docgenerator(self):
         self.w.append(AnswerSheet_Generator(self))
@@ -258,13 +261,16 @@ class AnswerSheet_Generator(QMainWindow):
         try:
             # todo: error handling if database is locked
             # todo: error handling if test already exists
+            # todo: TEST ID AND CLASS ID NOT APPENDED TO QR CODE
             # create test record
             self.Tests.add([self.textbox_testname.text(), self.slider_questions.value()])
 
             test_ID = str(self.Tests.get_ID(' WHERE Test_Name="' + str(self.textbox_testname.text())
                                             + '"')[0][0])
+            print(test_ID)
             class_ID = str(self.Classes.get_ID(' WHERE Class_Name="' + str(self.comboBox_classes.currentText())
                                                + '"')[0][0])
+            print(class_ID)
             names = [i[0] for i in self.Students.get_names(' WHERE Class_ID=' + class_ID)]
             student_info = []
 
@@ -299,8 +305,6 @@ class MarkWindow(QMainWindow):
         self.button_selectfolder.clicked.connect(self.open_dialog)
         self.button_markpapers.clicked.connect(self.mark_papers)
 
-        self.get_answers(18)
-
         self.w = []
 
     def open_dialog(self):
@@ -319,7 +323,7 @@ class MarkWindow(QMainWindow):
 
                 if filepath.endswith(".png") or filepath.endswith(".jpg") or filepath.endswith(".jpeg"):
                     try:
-                        qr_info = str(improcessing.find_qr(filepath))
+                        qr_info = str(improcessing.find_qr(filepath)[:-1])
                         qr_info = qr_info.split(" ")
 
                         if qr_info[0] == qr_info[1] == qr_info[2] and qr_info[3] == qr_info[4] == qr_info[5]:
@@ -350,14 +354,22 @@ class MarkWindow(QMainWindow):
                     self.close()
 
     def get_answers(self, test_ID):
+        try:
 
-        answers = self.Answers.get_all_data(' WHERE Test_ID=' + str(test_ID))[0]
+            answers = self.Answers.get_all_data(' WHERE Test_ID=' + str(test_ID))
 
-        answers_dict = {i: answers[i] for i in range(0, len(answers))}
+            answers_dict = {i: answers[i] for i in range(0, len(answers))}
 
-        return answers_dict
+            return answers_dict
+
+        except Exception as e:
+            print("get_answers")
+            print(e)
+
 
 class ResultsWindows(QMainWindow):
+    # todo: handle error if test hasnt been marked
+
     def __init__(self, parent=None):
         super().__init__()
 
@@ -430,11 +442,11 @@ class ResultsWindows(QMainWindow):
         results_graph.setLabels(left="Frequency", bottom="Scores")
         results_graph.setXRange(0, self.max_mark, padding=0)
 
-        ax = results_graph.getAxis('bottom')  # This is the trick
-        dx = [(i, str(i)) for i in list(range(0, self.max_mark))]
+        ax = results_graph.getAxis('bottom')
+        dx = [(i, str(i)) for i in list(range(0, self.max_mark + 1))]
         ax.setTicks([dx, []])
 
-        ay = results_graph.getAxis('left')  # This is the trick
+        ay = results_graph.getAxis('left')
         dy = [(i, str(i)) for i in list(range(0, max([i[1] for i in scores])))]
         ay.setTicks([dy, []])
 

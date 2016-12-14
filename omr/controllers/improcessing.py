@@ -40,8 +40,9 @@ def find_qr(imageloc):
     # todo: error detection in message
 
     image = cv2.imread(imageloc)
-    image = rotate(image)
-    edges = binarise_image(rotate(image))
+    test = cv2.imread(imageloc)
+    image = rotate(rotate(image))
+    edges = binarise_image(image)
 
     _, contours, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     hierarchy = hierarchy[0]  # get the actual inner list of hierarchy descriptions
@@ -86,7 +87,9 @@ def find_qr(imageloc):
 def rotate(image):
     # todo: optimize
 
-    edges = edge_detect(image)
+    test = image
+
+    edges = binarise_image(image)
 
     # finds contours using edges
     _, cnts, heirachy = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -98,6 +101,7 @@ def rotate(image):
 
         if len(approx) == 4:
             rect = cv2.minAreaRect(c)
+
             if rect[2] > -45:
                 angle = rect[2]
             else:
@@ -112,7 +116,7 @@ def rotate(image):
 
 def find_border(image):
     image = rotate(image)
-    edges = edge_detect(image)
+    edges = binarise_image(image)
 
     # finds contours using edges
     _, cnts, heirachy = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -124,6 +128,7 @@ def find_border(image):
 
         if len(approx) == 4:
             x, y, w, h = cv2.boundingRect(c)
+
             return image[y:y + h, x:x + w]
 
 
@@ -152,7 +157,7 @@ def retrieve_answers(imageloc):
         x, y, w, h = cv2.boundingRect(current_contour)
         if current_hierarchy[2] < 0:
 
-            if 0.9 < w / h < 1.1:
+            if 0.9 < w / h < 1.1 and w > image.shape[1] * 0.005:
                 bubbles.append(current_contour)
                 areas.append(w * h)
 
@@ -168,7 +173,7 @@ def retrieve_answers(imageloc):
 
     # todo: add support for not answers a question
     xpos = sorted([i[0] for i in Counter(xpositions).most_common()][0:10])
-    ypos = [i[0] for i in Counter(ypositions).most_common()][0:10]
+    ypos = [i[0] for i in Counter(ypositions).most_common()][0:15]  # todo: fix this...
 
     binary = binarise_image(image)
 
@@ -176,7 +181,7 @@ def retrieve_answers(imageloc):
         xcount = 0
         for x in xpos:
             pixelsum = cv2.sumElems(binary[y:y + binary.shape[0] * 0.03, x:x + binary.shape[1] * 0.03])[0]
-            question = int((x // (image.shape[1] // 2)) * 10 + y // (image.shape[0] * 0.09))
+            question = int((x // (image.shape[1] // 2)) * 10 + y // (image.shape[0] * 0.085))
             if question in answers:
                 if pixelsum > answers[question]["pixelsum"]:
                     answers[question] = {"option": xcount % 5, "pixelsum": pixelsum}
@@ -191,10 +196,13 @@ def retrieve_answers(imageloc):
 def mark_answers(correct_answers, imageloc):
     mark = 0
 
+    correct_answers = correct_answers[0]
+
     answers = retrieve_answers(imageloc)
+    options = "ABCDE"
 
     for key, value in answers.items():
-        if correct_answers[key] == value["option"]:
+        if str(correct_answers[key]) == options[value["option"]]:
             mark += 1
 
     return mark

@@ -62,7 +62,8 @@ def activate_replacement(template, name, ID, num_questions, num_options, fileloc
             border=0,
         )
 
-        qr.add_data((str(ID) + " ") * 3 + str(test_ID) * 3 + str(class_ID) * 3)
+        print((str(ID) + " ") * 3 + (str(test_ID) + " ") * 3 + (str(class_ID) + " ") * 3)
+        qr.add_data((str(ID) + " ") * 3 + (str(test_ID) + " ") * 3 + (str(class_ID) + " ") * 3)
         qr.make(fit=True)
         im = qr.make_image()
 
