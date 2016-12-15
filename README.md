@@ -1,6 +1,6 @@
 # Exam-OMR
 Automated marking software for multiple choice answer sheets
 
-Pre-alpha 
+Beta testing
 
-Nothing works yet please dont judge me
+Things are working but still likely to be unstable at times
