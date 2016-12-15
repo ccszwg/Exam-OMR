@@ -1,6 +1,5 @@
 import sqlite3
 
-
 def scrub(table_name):
     try:
         return int(table_name)
