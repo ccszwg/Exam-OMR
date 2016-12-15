@@ -48,11 +48,8 @@ class MainWindow(QMainWindow):
         self.w[-1].show()
 
     def open_marking(self):
-        try:
-            self.w.append(MarkWindow(self))
-            self.w[-1].show()
-        except Exception as e:
-            print(e)
+        self.w.append(MarkWindow(self))
+        self.w[-1].show()
 
     def open_docgenerator(self):
         self.w.append(AnswerSheet_Generator(self))
@@ -258,34 +255,28 @@ class AnswerSheet_Generator(QMainWindow):
             self.button_generate.setEnabled(True)
 
     def generate_questions(self):
-        try:
-            # todo: error handling if database is locked
-            # todo: error handling if test already exists
-            # todo: TEST ID AND CLASS ID NOT APPENDED TO QR CODE
-            # create test record
-            self.Tests.add([self.textbox_testname.text(), self.slider_questions.value()])
+        # todo: error handling if database is locked
+        # todo: error handling if test already exists
+        # create test record
+        self.Tests.add([self.textbox_testname.text(), self.slider_questions.value()])
 
-            test_ID = str(self.Tests.get_ID(' WHERE Test_Name="' + str(self.textbox_testname.text())
-                                            + '"')[0][0])
-            print(test_ID)
-            class_ID = str(self.Classes.get_ID(' WHERE Class_Name="' + str(self.comboBox_classes.currentText())
-                                               + '"')[0][0])
-            print(class_ID)
-            names = [i[0] for i in self.Students.get_names(' WHERE Class_ID=' + class_ID)]
-            student_info = []
+        test_ID = str(self.Tests.get_ID(' WHERE Test_Name="' + str(self.textbox_testname.text())
+                                        + '"')[0][0])
+        class_ID = str(self.Classes.get_ID(' WHERE Class_Name="' + str(self.comboBox_classes.currentText())
+                                           + '"')[0][0])
+        names = [i[0] for i in self.Students.get_names(' WHERE Class_ID=' + class_ID)]
+        student_info = []
 
-            for i in names:
-                ID = str(self.Students.get_ID(' WHERE Class_ID=' + class_ID + ' AND Student_Name="' + i + '"')[0][0])
-                student_info.append({"Name": i, "ID": ID})
+        for i in names:
+            ID = str(self.Students.get_ID(' WHERE Class_ID=' + class_ID + ' AND Student_Name="' + i + '"')[0][0])
+            student_info.append({"Name": i, "ID": ID})
 
-            answers_fields = [int(test_ID)] + self.user_answers
+        answers_fields = [int(test_ID)] + self.user_answers
 
-            self.Answers.add(answers_fields)
+        self.Answers.add(answers_fields)
 
-            doc_generator.generate(student_info, self.slider_questions.value(),
-                                   self.slider_numoptions.value(), self.fileloc, class_ID, test_ID)
-        except Exception as e:
-            print(e)
+        doc_generator.generate(student_info, self.slider_questions.value(),
+                               self.slider_numoptions.value(), self.fileloc, class_ID, test_ID)
 
         # todo: create loading bar
 
@@ -322,22 +313,17 @@ class MarkWindow(QMainWindow):
                 filepath = subdir + os.sep + file
 
                 if filepath.endswith(".png") or filepath.endswith(".jpg") or filepath.endswith(".jpeg"):
-                    try:
-                        qr_info = str(improcessing.find_qr(filepath)[:-1])
-                        qr_info = qr_info.split(" ")
+                    qr_info = str(improcessing.find_qr(filepath)[:-1])
+                    qr_info = qr_info.split(" ")
 
-                        if qr_info[0] == qr_info[1] == qr_info[2] and qr_info[3] == qr_info[4] == qr_info[5]:
-                            mark = improcessing.mark_answers(self.get_answers(qr_info[3]), filepath)
-                            self.Results.add([qr_info[0], mark, qr_info[4]])
-                        else:
-                            # todo: handle qr code corruption better
-                            print("qr code corrupted")
+                    if qr_info[0] == qr_info[1] == qr_info[2] and qr_info[3] == qr_info[4] == qr_info[5]:
+                        mark = improcessing.mark_answers(self.get_answers(qr_info[3]), filepath)
+                        self.Results.add([qr_info[0], mark, qr_info[4]])
+                    else:
+                        # todo: handle qr code corruption better
+                        print("qr code corrupted")
 
-                        self.progressBar.setValue(self.progressBar.value() + 1)
-
-                    except Exception as e:
-                        # testing for any unexpected errors
-                        print(e)
+                    self.progressBar.setValue(self.progressBar.value() + 1)
 
                 else:
                     self.error = Dialog("error", "Error marking", "Unsupported file type")
@@ -354,17 +340,12 @@ class MarkWindow(QMainWindow):
                     self.close()
 
     def get_answers(self, test_ID):
-        try:
 
-            answers = self.Answers.get_all_data(' WHERE Test_ID=' + str(test_ID))
+        answers = self.Answers.get_all_data(' WHERE Test_ID=' + str(test_ID))
 
-            answers_dict = {i: answers[i] for i in range(0, len(answers))}
+        answers_dict = {i: answers[i] for i in range(0, len(answers))}
 
-            return answers_dict
-
-        except Exception as e:
-            print("get_answers")
-            print(e)
+        return answers_dict
 
 
 class ResultsWindows(QMainWindow):
@@ -388,6 +369,7 @@ class ResultsWindows(QMainWindow):
 
         # initialise variables
         self.results = None
+        self.w = []
 
     def create_combobox(self, selected=""):
 
@@ -405,6 +387,13 @@ class ResultsWindows(QMainWindow):
         self.max_mark = self.Tests.get_data(' WHERE Test_ID="' + str(self.test_ID) + '"')[0][1]
 
         scores = [i[1] for i in self.results]
+
+        if len(scores) == 0:
+            self.comboBox_tests.setCurrentIndex(-1)
+            self.w.append(Dialog("error", "Papers have not been marked",
+                                 "This test's papers have not been marked\nMark them in the Mark Window first"))
+            self.w[-1].show()
+            return
 
         plotpoints = scores + list(range(0, self.max_mark + 1))
 
