@@ -173,7 +173,7 @@ def retrieve_answers(imageloc):
 
     # todo: add support for not answers a question
     xpos = sorted([i[0] for i in Counter(xpositions).most_common()][0:10])
-    ypos = [i[0] for i in Counter(ypositions).most_common()][0:15]  # todo: fix this...
+    ypos = [i[0] for i in Counter(ypositions).most_common()]
 
     binary = binarise_image(image)
 
@@ -189,6 +189,9 @@ def retrieve_answers(imageloc):
                 answers[question] = {"option": xcount % 5, "pixelsum": pixelsum}
 
             xcount += 1
+
+        if len(answers) >= 20:
+            break
 
     return answers
 
