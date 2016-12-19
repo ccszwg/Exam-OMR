@@ -3,8 +3,9 @@ from collections import Counter
 
 import cv2
 import numpy as np
-import qreader
 from PIL import Image
+
+from .qreader import read
 
 # todo: TURN INTO A CLASS
 
@@ -79,7 +80,7 @@ def find_qr(imageloc):
 
     downsize = cv2.resize(np_qr, (21, 21))  # each pixel represents one block on QR code
     pil_qr = Image.fromarray(downsize)  # turns into PIL image for use with qreader.read()
-    data = qreader.read(pil_qr)  # should return Student_ID
+    data = read(pil_qr)  # should return Student_ID
 
     return data
 

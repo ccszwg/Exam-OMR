@@ -1,8 +1,12 @@
+import os
+
 import pip
 from setuptools import setup
 
-dependancies = ['comtypes', 'docx', 'qrcode', 'PyPDF2', 'pyqtgraph', 'PyQt5', 'numpy', 'Pillow', 'opencv-python',
-                'wheel']
+lxml = os.path.dirname(os.path.abspath(__file__)) + '\lxml-3.7.0-cp35-cp35m-win32.whl'
+
+dependancies = ['exceptions', 'comtypes', lxml, 'python-docx', 'qrcode', 'PyPDF2', 'pyqtgraph', 'PyQt5', 'numpy',
+                'Pillow', 'opencv-python', 'wheel']
 
 
 def install():
