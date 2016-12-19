@@ -1,9 +1,9 @@
 from collections import Iterator
 
-from qreader import tuples
-from qreader.exceptions import QrImageRecognitionException
-from qreader.spec import get_mask_func, FORMAT_INFO_MASK, get_dead_zones, ec_level_from_format_info_code
-from qreader.validation import validate_format_info, validate_data
+from . import tuples
+from .exceptions import QrImageRecognitionException
+from .spec import get_mask_func, FORMAT_INFO_MASK, get_dead_zones, ec_level_from_format_info_code
+from .validation import validate_format_info, validate_data
 
 __author__ = 'ewino'
 

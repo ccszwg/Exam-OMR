@@ -47,7 +47,7 @@ class Table(object):
             raise AttributeError("Table parameter is not understood")
 
     def generate_database(self):
-        conn = sqlite3.connect("data/database.db")
+        conn = sqlite3.connect("resources/database.db")
 
         c = conn.cursor()
 
@@ -82,7 +82,7 @@ class Table(object):
 
     def name_exists(self, name, additional_criteria=""):
 
-        conn = sqlite3.connect("data/database.db")
+        conn = sqlite3.connect("resources/database.db")
 
         c = conn.cursor()
         c.execute("SELECT rowid FROM " + self.table + " WHERE " + self.headers.split(", ")[0] + '="' + name + '"' +
@@ -100,7 +100,7 @@ class Table(object):
 
     def add(self, data):
 
-        conn = sqlite3.connect("data/database.db")
+        conn = sqlite3.connect("resources/database.db")
 
         c = conn.cursor()
 
@@ -116,7 +116,7 @@ class Table(object):
         conn.close()
 
     def get_names(self, criteria=""):
-        conn = sqlite3.connect("data/database.db")
+        conn = sqlite3.connect("resources/database.db")
 
         c = conn.cursor()
         c.execute("SELECT " + self.headers.split(", ")[0] + " FROM " + self.table + criteria)
@@ -128,7 +128,7 @@ class Table(object):
         return data
 
     def get_all_data(self, criteria=""):
-        conn = sqlite3.connect("data/database.db")
+        conn = sqlite3.connect("resources/database.db")
 
         c = conn.cursor()
         c.execute("SELECT " + ", ".join(self.headers.split(", ")[1:]) + " FROM " + self.table + criteria)
@@ -140,7 +140,7 @@ class Table(object):
         return data
 
     def get_data(self, criteria=""):
-        conn = sqlite3.connect("data/database.db")
+        conn = sqlite3.connect("resources/database.db")
 
         c = conn.cursor()
         c.execute("SELECT " + ", ".join(self.headers.split(", ")[0:2]) + " FROM " + self.table + criteria)
@@ -152,7 +152,7 @@ class Table(object):
         return data
 
     def get_ID(self, criteria=""):
-        conn = sqlite3.connect("data/database.db")
+        conn = sqlite3.connect("resources/database.db")
 
         c = conn.cursor()
         c.execute("SELECT " + self.primarykey + " FROM " + self.table + criteria)
@@ -164,7 +164,7 @@ class Table(object):
         return data
 
     def delete(self, criteria=""):
-        conn = sqlite3.connect("data/database.db")
+        conn = sqlite3.connect("resources/database.db")
 
         c = conn.cursor()
         c.execute("DELETE FROM " + self.table + " " + criteria)

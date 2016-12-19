@@ -1,5 +1,5 @@
-from qreader.exceptions import QrCorruptError
-from qreader.spec import FORMAT_INFO_BCH_GENERATOR
+from .exceptions import QrCorruptError
+from .spec import FORMAT_INFO_BCH_GENERATOR
 
 __author__ = 'ewino'
 

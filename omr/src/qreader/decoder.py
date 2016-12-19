@@ -1,9 +1,9 @@
-from qreader.constants import MODE_NUMBER, MODE_ALPHA_NUM, ALPHANUM_CHARS, MODE_BYTES, MODE_KANJI, MODE_ECI, \
+from .constants import MODE_NUMBER, MODE_ALPHA_NUM, ALPHANUM_CHARS, MODE_BYTES, MODE_KANJI, MODE_ECI, \
     MODE_STRUCTURED_APPEND
-from qreader.exceptions import IllegalQrMessageModeId
-from qreader.spec import bits_for_length
-from qreader.utils import ints_to_bytes
-from qreader.vcard import vCard
+from .exceptions import IllegalQrMessageModeId
+from .spec import bits_for_length
+from .utils import ints_to_bytes
+from .vcard import vCard
 
 __author__ = 'ewino'
 
